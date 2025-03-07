@@ -60,8 +60,8 @@ class OrbitTransformController(QObject):
     radius = Property(float, getRadius, setRadius, notify=radiusChanged)
 
 
-grid_size = 1
-maze_size = 7
+grid_size = 10
+maze_size = 5
 
 # fps = 1
 fps = 60
@@ -77,6 +77,9 @@ class Window(Qt3DExtras.Qt3DWindow):
     wall_list = list()
 
     text_list = list()
+
+    yaw_angle = 0
+    pitch_angle = 0
 
     def __init__(self):
         super().__init__()
@@ -152,7 +155,7 @@ class Window(Qt3DExtras.Qt3DWindow):
 
         self.create_scene()
 
-        self.last_mouse_pos = self.mapFromGlobal(QCursor.pos())
+        self.last_cursor_pos = self.mapFromGlobal(QCursor.pos())
 
         from camera_control import CameraController
 
@@ -191,12 +194,10 @@ class Window(Qt3DExtras.Qt3DWindow):
         player_position, _ = pybullet.getBasePositionAndOrientation(self.player_body)
 
         if self.camera_index == 2:
-            self.center_cursor()
             self.setCursor(Qt.CursorShape.BlankCursor)
             self.controller.movement_speed = grid_size * 5
 
             final_vector = self.controller.cal_movement_vector()
-            # TODO: Bind rotation movement
             velocity = [final_vector.x(), final_vector.z(), final_vector.y()]
 
             camera_position = self.controller.camera.position()
@@ -206,9 +207,27 @@ class Window(Qt3DExtras.Qt3DWindow):
                 player_position[2] - camera_position.y(),
                 player_position[1] - camera_position.z(),
             )
-            self.controller.camera.setPosition(camera_position + delta)
-            self.controller.camera.setViewCenter(camera_view_center + delta)
+            camera_position_new = camera_position + delta
+            self.controller.camera.setPosition(camera_position_new)
+            # self.controller.camera.setViewCenter(camera_view_center + delta)
 
+            delta_x = self.last_cursor_pos.x() - self.mapFromGlobal(QCursor.pos()).x()
+            delta_y = self.last_cursor_pos.y() - self.mapFromGlobal(QCursor.pos()).y()
+
+            view_speed = 0.01
+
+            forward = (camera_view_center - camera_position).normalized()
+            right = QVector3D.crossProduct(forward, QVector3D(0, 1, 0)).normalized()
+            up = QVector3D.crossProduct(right, forward).normalized()
+
+            direction = (forward + right * delta_x * -view_speed + up * delta_y * view_speed).normalized()
+            camera_view_center_new = camera_position_new + direction
+
+            self.camera().setViewCenter(camera_view_center_new)
+            self.camera().setUpVector(QVector3D(0, 1, 0))
+
+            self.center_cursor()
+            self.last_cursor_pos = self.mapFromGlobal(QCursor.pos())
         else:
             self.unsetCursor()
             self.controller.movement_speed = grid_size / 20
@@ -248,6 +267,7 @@ class Window(Qt3DExtras.Qt3DWindow):
     def create_maze(self):
         from wall import Wall
         from text import Text
+        from texture import Texture
 
         from map_generator import Maze
 
@@ -256,16 +276,26 @@ class Window(Qt3DExtras.Qt3DWindow):
         maze.prim()
         maze.after_prim()
 
+        wall_texture = Texture(self.root_entity)
+        wall_texture.generate_random_texture()
+        wall_material = wall_texture.create_material()
+
+        def create_wall(x, y, z, rotate=False):
+            _wall = Wall(self.root_entity, grid_size)
+            _wall.transform.setTranslation(QVector3D(x, y, z))
+            if rotate:
+                _wall.transform.setRotation(QQuaternion.fromEulerAngles(0, 90, 0))
+            _wall.entity.addComponent(wall_material)
+            self.wall_list.append(_wall)
+
         for v1 in maze.v_list:
             if v1.x == 0:
-                wall = Wall(self.root_entity, grid_size)
-                wall.transform.setTranslation(QVector3D(
+                create_wall(
                     0,
                     grid_size * 0.5,
-                    grid_size * 0.5 + v1.y * grid_size,
-                ))
-                wall.transform.setRotation(QQuaternion.fromEulerAngles(0, 90, 0))
-                self.wall_list.append(wall)
+                    grid_size * 0.6 + v1.y * grid_size * 1.1,
+                    True,
+                )
 
                 # text = Text(self.root_entity, f"{v1.x}, {v1.y}")
                 # text.transform.setTranslation(QVector3D(
@@ -277,25 +307,21 @@ class Window(Qt3DExtras.Qt3DWindow):
                 # self.text_list.append(text)
 
             if v1.y == 0:
-                wall = Wall(self.root_entity, grid_size)
-                wall.transform.setTranslation(QVector3D(
+                create_wall(
                     grid_size * 0.5 + v1.x * grid_size,
                     grid_size * 0.5,
                     0,
-                ))
-                self.wall_list.append(wall)
+                )
 
             if v1.x + 1 < maze.size:
                 v2 = maze.v_list[(v1.x + 1) * maze.size + v1.y]
                 if maze.e_prim_list[v1.get_id()][v2.get_id()] is None:
-                    wall = Wall(self.root_entity, grid_size)
-                    wall.transform.setTranslation(QVector3D(
+                    create_wall(
                         v2.x * grid_size,
                         grid_size / 2,
                         grid_size / 2 + v2.y * grid_size,
-                    ))
-                    wall.transform.setRotation(QQuaternion.fromEulerAngles(0, 90, 0))
-                    self.wall_list.append(wall)
+                        True,
+                    )
 
                 # text = Text(self.root_entity, f"{v2.x}, {v2.y}")
                 # text.transform.setTranslation(QVector3D(
@@ -306,27 +332,27 @@ class Window(Qt3DExtras.Qt3DWindow):
                 # text.transform.setRotation(QQuaternion.fromEulerAngles(-90, 0, 0))
                 # self.text_list.append(text)
             else:
-                wall = Wall(self.root_entity, grid_size)
-                wall.transform.setTranslation(
-                    QVector3D((v1.x + 1) * grid_size, grid_size / 2, grid_size / 2 + v1.y * grid_size)
+                create_wall(
+                    (v1.x + 1) * grid_size,
+                    grid_size / 2,
+                    grid_size / 2 + v1.y * grid_size,
+                    True,
                 )
-                wall.transform.setRotation(QQuaternion.fromEulerAngles(0, 90, 0))
-                self.wall_list.append(wall)
 
             if v1.y + 1 < maze.size:
                 v2 = maze.v_list[v1.x * maze.size + (v1.y + 1)]
                 if maze.e_prim_list[v1.get_id()][v2.get_id()] is None:
-                    wall = Wall(self.root_entity, grid_size)
-                    wall.transform.setTranslation(
-                        QVector3D(grid_size / 2 + v2.x * grid_size, grid_size / 2, v2.y * grid_size)
+                    create_wall(
+                        grid_size / 2 + v2.x * grid_size,
+                        grid_size / 2,
+                        v2.y * grid_size,
                     )
-                    self.wall_list.append(wall)
             else:
-                wall = Wall(self.root_entity, grid_size)
-                wall.transform.setTranslation(
-                    QVector3D(grid_size / 2 + v1.x * grid_size, grid_size / 2, (v1.y + 1) * grid_size)
+                create_wall(
+                    grid_size / 2 + v1.x * grid_size,
+                    grid_size / 2,
+                    (v1.y + 1) * grid_size,
                 )
-                self.wall_list.append(wall)
 
         for wall in self.wall_list:
             wall_shape = pybullet.createCollisionShape(
@@ -387,44 +413,33 @@ class Window(Qt3DExtras.Qt3DWindow):
 
     def event(self, event):
         if event.type() == QEvent.Type.Enter:
-            self.last_mouse_pos = self.mapFromGlobal(QCursor.pos())
+            self.last_cursor_pos = self.mapFromGlobal(QCursor.pos())
         elif event.type() == QEvent.Type.Leave:
             pass
         return super().event(event)
 
     def mouseMoveEvent(self, event):
-        delta_x = event.position().x() - self.last_mouse_pos.x()
-        delta_y = event.position().y() - self.last_mouse_pos.y()
+        delta_x = event.position().x() - self.last_cursor_pos.x()
+        delta_y = event.position().y() - self.last_cursor_pos.y()
 
-        sensitivity = 1
-        yaw_angle = delta_x * sensitivity
-        pitch_angle = -delta_y * sensitivity
+        if self.camera_index != 2:
 
-        pos = self.camera().position()
-        view_center = self.camera().viewCenter()
-        direction = view_center - pos
+            camera_position = self.camera().position()
+            camera_view_center = self.camera().viewCenter()
 
-        yaw_radians = math.radians(yaw_angle)
-        cos_yaw = math.cos(yaw_radians)
-        sin_yaw = math.sin(yaw_radians)
+            view_speed = 0.005
 
-        new_direction = QVector3D(
-            direction.x() * cos_yaw - direction.z() * sin_yaw,
-            direction.y(),
-            direction.x() * sin_yaw + direction.z() * cos_yaw
-        )
+            forward = (camera_view_center - camera_position).normalized()
+            right = QVector3D.crossProduct(forward, QVector3D(0, 1, 0)).normalized()
+            up = QVector3D.crossProduct(right, forward).normalized()
 
-        pitch_radians = math.radians(pitch_angle)
-        forward = new_direction.normalized()
-        right = QVector3D.crossProduct(forward, QVector3D(0, 1, 0)).normalized()
-        up = QVector3D.crossProduct(right, forward).normalized()
+            direction = (forward + right * delta_x * -view_speed + up * delta_y * view_speed).normalized()
+            camera_view_center_new = camera_position + direction
 
-        new_direction = (new_direction * math.cos(pitch_radians) + up * math.sin(pitch_radians)).normalized()
+            self.camera().setViewCenter(camera_view_center_new)
+            self.camera().setUpVector(QVector3D(0, 1, 0))
 
-        self.camera().setViewCenter(pos + new_direction)
-        self.camera().setUpVector(QVector3D(0, 1, 0))
-
-        self.last_mouse_pos = self.mapFromGlobal(QCursor.pos())
+        self.last_cursor_pos = self.mapFromGlobal(QCursor.pos())
 
 
 class BulletPhysics:

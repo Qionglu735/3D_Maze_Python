@@ -16,8 +16,8 @@ class Ground:
         self.entity = Qt3DCore.QEntity(root_entity)
 
         self.mesh = Qt3DExtras.QPlaneMesh()
-        self.mesh.setWidth(256)
-        self.mesh.setHeight(256)
+        self.mesh.setWidth(1024)
+        self.mesh.setHeight(1024)
 
         self.transform = Qt3DCore.QTransform()
         self.transform.setTranslation(QVector3D(0, 0, 0))

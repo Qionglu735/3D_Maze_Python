@@ -24,6 +24,8 @@ class CameraController(QObject):
             Qt.Key.Key_S,
             Qt.Key.Key_A,
             Qt.Key.Key_D,
+            Qt.Key.Key_C,
+            Qt.Key.Key_E,
         ]:
             return True
         else:
@@ -84,3 +86,16 @@ class CameraController(QObject):
             view_center += right * self.movement_speed
             self.camera.setPosition(position)
             self.camera.setViewCenter(view_center)
+        if Qt.Key.Key_E in self.keys_pressed:
+            position += up * self.movement_speed
+            view_center += up * self.movement_speed
+            self.camera.setPosition(position)
+            self.camera.setViewCenter(view_center)
+        if Qt.Key.Key_C in self.keys_pressed:
+            position -= up * self.movement_speed
+            view_center -= up * self.movement_speed
+            self.camera.setPosition(position)
+            self.camera.setViewCenter(view_center)
+
+    def update_camera_rotation(self):
+        pass
