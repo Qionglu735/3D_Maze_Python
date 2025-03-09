@@ -311,7 +311,7 @@ class Window(Qt3DExtras.Qt3DWindow):
                 create_wall(
                     0,
                     grid_size * 0.5,
-                    grid_size * 0.5 + v1.y * grid_size,
+                    grid_size * 0.55 + v1.y * grid_size * 1.1,
                     True,
                 )
 
@@ -326,7 +326,7 @@ class Window(Qt3DExtras.Qt3DWindow):
 
             if v1.y == 0:
                 create_wall(
-                    grid_size * 0.5 + v1.x * grid_size,
+                    grid_size * 0.55 + v1.x * grid_size * 1.1,
                     grid_size * 0.5,
                     0,
                 )
@@ -335,9 +335,9 @@ class Window(Qt3DExtras.Qt3DWindow):
                 v2 = maze.v_list[(v1.x + 1) * maze.size + v1.y]
                 if maze.e_prim_list[v1.get_id()][v2.get_id()] is None:
                     create_wall(
-                        v2.x * grid_size,
+                        v2.x * grid_size * 1.1,
                         grid_size / 2,
-                        grid_size / 2 + v2.y * grid_size,
+                        grid_size * 0.55 + v2.y * grid_size * 1.1,
                         True,
                     )
 
@@ -351,9 +351,9 @@ class Window(Qt3DExtras.Qt3DWindow):
                 # self.text_list.append(text)
             else:
                 create_wall(
-                    (v1.x + 1) * grid_size,
+                    (v1.x + 1) * grid_size * 1.1,
                     grid_size / 2,
-                    grid_size / 2 + v1.y * grid_size,
+                    grid_size * 0.55 + v1.y * grid_size * 1.1,
                     True,
                 )
 
@@ -361,15 +361,15 @@ class Window(Qt3DExtras.Qt3DWindow):
                 v2 = maze.v_list[v1.x * maze.size + (v1.y + 1)]
                 if maze.e_prim_list[v1.get_id()][v2.get_id()] is None:
                     create_wall(
-                        grid_size / 2 + v2.x * grid_size,
+                        grid_size * 0.55 + v2.x * grid_size * 1.1,
                         grid_size / 2,
-                        v2.y * grid_size,
+                        v2.y * grid_size * 1.1,
                     )
             else:
                 create_wall(
-                    grid_size / 2 + v1.x * grid_size,
+                    grid_size * 0.55 + v1.x * grid_size * 1.1,
                     grid_size / 2,
-                    (v1.y + 1) * grid_size,
+                    (v1.y + 1) * grid_size * 1.1,
                 )
 
         for wall in self.wall_list:
