@@ -176,6 +176,12 @@ class Window(Qt3DExtras.Qt3DWindow):
         )
 
         player_pos, _ = pybullet.getBasePositionAndOrientation(self.player_body)
+        pybullet.changeDynamics(
+            self.player_body, -1,
+            angularDamping=0.0,
+            linearDamping=0.0,
+            localInertiaDiagonal=[1e9, 1e9, 0],
+        )
 
         camera_2 = self.camera_list[2]
         camera_2.position = QVector3D(player_pos[0], player_pos[2], player_pos[1])
@@ -190,15 +196,21 @@ class Window(Qt3DExtras.Qt3DWindow):
         self.timer.start(math.floor(1000 / fps))
 
     def update_physics(self):
-        self.physics.step_simulation()
+        try:
+            self.physics.step_simulation()
+        except pybullet.error:
+            self.timer.stop()
+            self.close()
         player_position, _ = pybullet.getBasePositionAndOrientation(self.player_body)
+        linear_vel, angular_vel = pybullet.getBaseVelocity(self.player_body)
 
         if self.camera_index == 2:
             self.setCursor(Qt.CursorShape.BlankCursor)
             self.controller.movement_speed = grid_size * 5
 
             final_vector = self.controller.cal_movement_vector()
-            velocity = [final_vector.x(), final_vector.z(), final_vector.y()]
+            # velocity = [final_vector.x(), final_vector.z(), final_vector.y()]
+            velocity = [final_vector.x(), final_vector.z(), linear_vel[2]]
 
             camera_position = self.controller.camera.position()
             camera_view_center = self.controller.camera.viewCenter()
@@ -226,23 +238,29 @@ class Window(Qt3DExtras.Qt3DWindow):
             self.camera().setViewCenter(camera_view_center_new)
             self.camera().setUpVector(QVector3D(0, 1, 0))
 
+            camera_yaw = math.degrees(math.asin(direction.x()))
+            if direction.z() < 0:
+                camera_yaw *= -1
+
             self.center_cursor()
             self.last_cursor_pos = self.mapFromGlobal(QCursor.pos())
         else:
             self.unsetCursor()
             self.controller.movement_speed = grid_size / 20
             velocity = [0, 0, 0]
+            camera_yaw = 0
             self.controller.update_camera_position()
 
-        pybullet.resetBaseVelocity(self.player_body, linearVelocity=velocity)
+        pybullet.resetBaseVelocity(
+            self.player_body,
+            linearVelocity=velocity,
+            # angularVelocity=[0, 0, angular_vel[2]],
+        )
 
-        camera_distance = 2.0  # 摄像机与玩家的距离
-        camera_pitch = -60  # 俯仰角
-        camera_yaw = 0  # 水平旋转角
         pybullet.resetDebugVisualizerCamera(
-            cameraDistance=camera_distance,
-            cameraYaw=camera_yaw,
-            cameraPitch=camera_pitch,
+            cameraDistance=grid_size,  # 摄像机与玩家的距离
+            cameraYaw=camera_yaw,  # 水平旋转角
+            cameraPitch=-60,  # 俯仰角
             cameraTargetPosition=player_position,
         )
 
@@ -293,7 +311,7 @@ class Window(Qt3DExtras.Qt3DWindow):
                 create_wall(
                     0,
                     grid_size * 0.5,
-                    grid_size * 0.6 + v1.y * grid_size * 1.1,
+                    grid_size * 0.5 + v1.y * grid_size,
                     True,
                 )
 
