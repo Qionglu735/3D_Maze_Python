@@ -91,9 +91,13 @@ class Window(Qt3DExtras.Qt3DWindow):
         self.setWidth(160)
         self.setHeight(90)
 
+        # self.setWidth(640)
+        # self.setHeight(360)
+
         self.setPosition(QPoint(
             int(QGuiApplication.primaryScreen().size().width() * 0.65),
             int(QGuiApplication.primaryScreen().size().height() * 0.83),
+            # int(QGuiApplication.primaryScreen().size().height() * 0.23),
         ))
 
         self.defaultFrameGraph().setClearColor(QColor(63, 63, 63))
@@ -191,6 +195,18 @@ class Window(Qt3DExtras.Qt3DWindow):
         self.camera_index = 1
         self.camera_list[self.camera_index].load(self.camera())
 
+        self.sphere_body = pybullet.createMultiBody(
+            baseMass=1,
+            baseCollisionShapeIndex=pybullet.createCollisionShape(
+                pybullet.GEOM_SPHERE,
+                radius=grid_size / 10,
+            ),
+            basePosition=[grid_size / 2, grid_size / 2, grid_size * 2],
+        )
+        pybullet.resetBaseVelocity(self.sphere_body, linearVelocity=[grid_size * 4, 0, 0],)
+
+        self.ball = Ball(self.root_entity, grid_size)
+
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_physics)
         self.timer.start(math.floor(1000 / fps))
@@ -263,6 +279,9 @@ class Window(Qt3DExtras.Qt3DWindow):
             cameraPitch=-60,  # 俯仰角
             cameraTargetPosition=player_position,
         )
+
+        sphere_position, _ = pybullet.getBasePositionAndOrientation(self.sphere_body)
+        self.ball.transform.setTranslation(QVector3D(sphere_position[0], sphere_position[2], sphere_position[1]))
 
     def center_cursor(self):
         center_pos = self.mapToGlobal(QPoint(self.width() // 2, self.height() // 2))
@@ -465,7 +484,7 @@ class BulletPhysics:
         self.physics_client = pybullet.connect(pybullet.DIRECT)
         # self.physics_client = pybullet.connect(pybullet.GUI)
         pybullet.setAdditionalSearchPath(pybullet_data.getDataPath())
-        pybullet.setGravity(0, -9.8, 0)
+        pybullet.setGravity(0, 0, -9.8)
 
         self.plane_id = pybullet.loadURDF("plane.urdf")
 
@@ -509,6 +528,33 @@ class CameraSave:
         print(f"Yaw: {euler_angles.y():.2f} degrees")
         print(f"Roll: {euler_angles.z():.2f} degrees")
 
+
+class Ball:
+
+    entity = None
+    mesh = None
+    transform = None
+    material = None
+
+    def __init__(self, root_entity, grid_size):
+
+        self.entity = Qt3DCore.QEntity(root_entity)
+
+        self.mesh = Qt3DExtras.QSphereMesh()
+        self.mesh.setRadius(grid_size / 10)
+
+        self.transform = Qt3DCore.QTransform()
+        self.transform.setTranslation(QVector3D(10, 10, 10))
+
+        self.material = Qt3DExtras.QPhongMaterial(root_entity)
+        self.material.setAmbient(QColor(255, 255, 255))
+        self.material.setDiffuse(QColor(255, 255, 255))
+        self.material.setSpecular(QColor(0, 0, 0))
+        self.material.setShininess(0)
+
+        self.entity.addComponent(self.mesh)
+        self.entity.addComponent(self.transform)
+        self.entity.addComponent(self.material)
 
 
 

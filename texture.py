@@ -22,6 +22,7 @@ class Texture:
     def generate_random_texture(self, size=1024):
         scale = 128
         image = QImage(size, size, QImage.Format.Format_RGB32)
+        v_list = list()
         for x in range(size):
             for y in range(size):
                 value = noise.pnoise2(
@@ -35,11 +36,11 @@ class Texture:
                 persistence: number that determines how much each octave contributes to the overall shape (adjusts amplitude).
                 https://medium.com/@yvanscher/playing-with-perlin-noise-generating-realistic-archipelagos-b59f004d8401
                 """
-                if value < -0.5:
+                if value < -0.3:
                     image.setPixelColor(x, y, QColor(31, 0, 0))
                 elif value < 0:
                     image.setPixelColor(x, y, QColor(63, 31, 31))
-                elif value < 0.5:
+                elif value < 0.3:
                     image.setPixelColor(x, y, QColor(127, 63, 63))
                 else:
                     image.setPixelColor(x, y, QColor(191, 127, 127))

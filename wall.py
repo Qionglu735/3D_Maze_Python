@@ -16,7 +16,7 @@ class Wall:
         self.entity = Qt3DCore.QEntity(root_entity)
 
         self.mesh = Qt3DExtras.QCuboidMesh()
-        self.mesh.setXExtent(grid_size * 1.0)
+        self.mesh.setXExtent(grid_size * 1.1)
         self.mesh.setYExtent(grid_size)
         self.mesh.setZExtent(grid_size * 0.1)
 
