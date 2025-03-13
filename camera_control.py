@@ -1,21 +1,19 @@
 
 from PySide6.QtCore import QObject, Qt, QTimer
-from PySide6.QtGui import QVector3D
+from PySide6.QtGui import QVector3D, QCursor, QVector2D
 
 import math
 
 
-class CameraController(QObject):
+class CameraController:
     movement_speed = 5.0
+    view_speed = 0.01
+
+    last_cursor_pos = None
 
     def __init__(self, camera):
-        super().__init__()
         self.camera = camera
         self.keys_pressed = set()
-
-        # self.timer = QTimer()
-        # self.timer.timeout.connect(self.update_camera_position)
-        # self.timer.start(math.floor(1000 / 16))
 
     def key_press_event(self, event):
         self.keys_pressed.add(event.key())
@@ -54,6 +52,14 @@ class CameraController(QObject):
             right *= 0
         up *= 0
         return forward + right + up
+
+    def cal_view_vector(self, cursor_pos):
+        view_speed = 0.01
+
+        return QVector2D(
+            (self.last_cursor_pos.x() - cursor_pos.x()) * -view_speed,
+            (self.last_cursor_pos.y() - cursor_pos.y()) * view_speed,
+        )
 
     def update_camera_position(self):
         position = self.camera.position()
