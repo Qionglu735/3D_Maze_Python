@@ -1,4 +1,4 @@
-
+from PySide6 import QtGui
 from PySide6.QtCore import Property, QObject, QPropertyAnimation, Signal, QPoint, Qt, QTimer, QEvent
 from PySide6.QtGui import QGuiApplication, QMatrix4x4, QQuaternion, QVector3D, QColor, QSurfaceFormat, QCursor, \
     QVector2D
@@ -79,10 +79,15 @@ class Window(Qt3DExtras.Qt3DWindow):
     ground = None
     wall_list = list()
 
+    ball = None
+    ball_list = None
+
     text_list = list()
 
     yaw_angle = 0
     pitch_angle = 0
+
+    frame_counter = 0
 
     def __init__(self):
         super().__init__()
@@ -181,26 +186,31 @@ class Window(Qt3DExtras.Qt3DWindow):
         self.camera_index = 1
         self.camera_list[self.camera_index].load(self.camera())
 
-        self.sphere_body = pybullet.createMultiBody(
-            baseMass=10,
-            baseCollisionShapeIndex=pybullet.createCollisionShape(
-                pybullet.GEOM_SPHERE,
-                radius=grid_size * 0.05,
-            ),
-            basePosition=[grid_size / 2, grid_size / 2, grid_size * 2],
-        )
-        pybullet.resetBaseVelocity(self.sphere_body, linearVelocity=[grid_size * 4, 0, 0],)
+        # self.sphere_body = pybullet.createMultiBody(
+        #     baseMass=10,
+        #     baseCollisionShapeIndex=pybullet.createCollisionShape(
+        #         pybullet.GEOM_SPHERE,
+        #         radius=grid_size * 0.05,
+        #     ),
+        #     basePosition=[grid_size / 2, grid_size / 2, grid_size * 2],
+        # )
+        # pybullet.resetBaseVelocity(self.sphere_body, linearVelocity=[grid_size * 4, 0, 0],)
 
         # self.ball = Ball(self.root_entity, grid_size)
 
-        from ball import Ball
-        self.ball = Ball(self.root_entity, grid_size)
+        from ball import Ball, BallList
+        # self.ball = Ball(self.root_entity, grid_size, QVector3D(10, 5, 5), QVector3D(5, 0, 0))
+        self.ball_list = BallList(self.root_entity, grid_size)
+
+        from aim_line import AimLine
+        self.aim_line = AimLine(self.root_entity, grid_size)
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_physics)
         self.timer.start(math.floor(1000 / fps))
 
     def update_physics(self):
+
         try:
             self.physics.step_simulation()
         except pybullet.error:
@@ -235,7 +245,7 @@ class Window(Qt3DExtras.Qt3DWindow):
             )
             self.controller.camera.setPosition(camera_pos_new)
 
-            player_view_vector = self.controller.cal_view_vector(self.mapFromGlobal(QCursor.pos()))
+            player_view_move_vector = self.controller.cal_view_vector(self.mapFromGlobal(QCursor.pos()))
 
             forward = (camera_view_center - camera_pos).normalized()
             right = QVector3D.crossProduct(forward, QVector3D(0, 1, 0)).normalized()
@@ -243,17 +253,27 @@ class Window(Qt3DExtras.Qt3DWindow):
 
             camera_view_vector = (
                 forward
-                + right * player_view_vector.x()
-                + up * player_view_vector.y()
+                + right * player_view_move_vector.x()
+                + up * player_view_move_vector.y()
             ).normalized()
             camera_view_center_new = camera_pos_new + camera_view_vector
 
             self.camera().setViewCenter(camera_view_center_new)
             self.camera().setUpVector(QVector3D(0, 1, 0))
 
-            camera_yaw = math.degrees(math.asin(camera_view_vector.x()))
-            if camera_view_vector.z() < 0:
-                camera_yaw *= -1
+            try:
+                camera_yaw = math.degrees(math.asin(camera_view_vector.x()))
+                if camera_view_vector.z() < 0:
+                    camera_yaw *= -1
+            except ValueError:
+                print(camera_view_vector.x())
+                camera_yaw = 0
+
+            if player_move_vector.length() + player_view_move_vector.length() > 0:
+                self.aim_line.set_pos(
+                    QVector3D(player_pos[0], player_pos[2] - grid_size * 0.1, player_pos[1]) + camera_view_vector,
+                    camera_view_vector
+                )
 
             self.center_cursor()
             self.controller.last_cursor_pos = self.mapFromGlobal(QCursor.pos())
@@ -278,7 +298,21 @@ class Window(Qt3DExtras.Qt3DWindow):
         # sphere_position, _ = pybullet.getBasePositionAndOrientation(self.sphere_body)
         # self.ball.transform.setTranslation(QVector3D(sphere_position[0], sphere_position[2], sphere_position[1]))
 
-        self.ball.update()
+        # self.ball.update()
+
+        self.frame_counter = (self.frame_counter + 1) % fps
+
+        # if self.camera_index == 2 and self.frame_counter % 6 == 0:
+        #     player_pos, _ = pybullet.getBasePositionAndOrientation(self.player.body)
+        #     view_vector = (self.controller.camera.viewCenter() - self.controller.camera.position()).normalized()
+        #     self.ball_list.create_ball(
+        #         QVector3D(player_pos[0], player_pos[2] - grid_size * 0.1, player_pos[1]) + view_vector * 0.12,
+        #         view_vector * 10,
+        #     )
+
+        self.ball_list.update()
+
+        self.aim_line.update()
 
     def center_cursor(self):
         center_pos = self.mapToGlobal(QPoint(self.width() // 2, self.height() // 2))
@@ -462,13 +496,25 @@ class Window(Qt3DExtras.Qt3DWindow):
         return super().event(event)
 
     def mousePressEvent(self, event):
+        print("Press", event.button())
         if self.camera_index == 2:
-            player_pos, _ = pybullet.getBasePositionAndOrientation(self.player.body)
-            view_vector = (self.controller.camera.viewCenter() - self.controller.camera.position()).normalized()
-            self.ball.create_ball(
-                QVector3D(player_pos[0], player_pos[2], player_pos[1]) + view_vector,
-                view_vector * 5,
-            )
+            if event.button() == Qt.MouseButton.LeftButton:
+                player_pos, _ = pybullet.getBasePositionAndOrientation(self.player.body)
+                view_vector = (self.controller.camera.viewCenter() - self.controller.camera.position()).normalized()
+                self.ball_list.create_ball(
+                    QVector3D(player_pos[0], player_pos[2] - grid_size * 0.1, player_pos[1]) + view_vector,
+                    view_vector * 5,
+                )
+            elif event.button() == Qt.MouseButton.RightButton:
+                print(event.button())
+                self.aim_line.draw()
+
+    def mouseReleaseEvent(self, event):
+        # print("Release", event.button())
+        # if self.camera_index == 2:
+        #     if event.button() == Qt.MouseButton.RightButton:
+        #         self.aim_line.clear()
+        pass
 
     def mouseMoveEvent(self, event):
         delta_x = event.position().x() - self.controller.last_cursor_pos.x()
@@ -496,8 +542,8 @@ class Window(Qt3DExtras.Qt3DWindow):
 
 class BulletPhysics:
     def __init__(self):
-        # self.physics_client = pybullet.connect(pybullet.DIRECT)
-        self.physics_client = pybullet.connect(pybullet.GUI)
+        self.physics_client = pybullet.connect(pybullet.DIRECT)
+        # self.physics_client = pybullet.connect(pybullet.GUI)
         pybullet.setAdditionalSearchPath(pybullet_data.getDataPath())
         pybullet.setGravity(0, 0, -9.8)
         pybullet.setTimeStep(1 / fps)
