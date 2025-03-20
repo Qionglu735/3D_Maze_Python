@@ -203,7 +203,7 @@ class Window(Qt3DExtras.Qt3DWindow):
         self.aim_line = AimLine(self.root_entity, grid_size, fps)
         self.aim_line.set_pos(
             QVector3D(player_pos[0], player_pos[2] - grid_size * 0.1, player_pos[1]) + self.camera_list[2].view_center,
-            self.camera_list[2].view_center
+            QVector3D(1, 0, 0),
         )
 
     def update_physics(self):
@@ -452,6 +452,13 @@ class Window(Qt3DExtras.Qt3DWindow):
 
                 self.controller.movement_speed = grid_size * 10
                 self.setCursor(Qt.CursorShape.BlankCursor)
+
+                player_pos, player_ori = pybullet.getBasePositionAndOrientation(self.player.body)
+                self.aim_line.set_pos(
+                    QVector3D(player_pos[0], player_pos[2] - grid_size * 0.1, player_pos[1]) + self.camera_list[
+                        2].view_center,
+                    self.camera().viewCenter() - self.camera().position(),
+                )
             elif event.key() == Qt.Key.Key_F3:
                 self.camera_list[self.camera_index].save(self.camera())
                 # self.camera_list[self.camera_index].print_status(self.camera())

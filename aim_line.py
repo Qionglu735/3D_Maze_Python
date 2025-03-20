@@ -25,7 +25,7 @@ class AimLine:
     def __init__(self, root_entity, size, fps):
         self.root_entity = root_entity
         self.size = size
-        self.sim_length = fps * 5
+        self.sim_length = fps * 10
 
         self.sim_body = pybullet.createMultiBody(
             baseMass=10,
@@ -36,8 +36,8 @@ class AimLine:
         )
         pybullet.changeDynamics(self.sim_body, -1, restitution=1)
 
-        for i in range(self.sim_length // self.dot_feq):
-            self.dot_list.append(Dot(self.root_entity, self.size, QVector3D(0, 0, 0)))
+        # for i in range(self.sim_length // self.dot_feq):
+        #     self.dot_list.append(Dot(self.root_entity, self.size, QVector3D(0, 0, 0)))
 
     def update(self):
         if len(self.pos_list) < self.sim_length:
