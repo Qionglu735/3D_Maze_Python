@@ -45,10 +45,11 @@ class Ball:
             ),
             basePosition=[position.x(), position.z(), position.y()],
         )
+        pybullet.changeDynamics(self.body, -1, restitution=1)
         pybullet.resetBaseVelocity(self.body, linearVelocity=[
-            vector.x() * 5,
-            vector.z() * 5,
-            vector.y() * 5,
+            vector.x(),
+            vector.z(),
+            vector.y(),
         ])
 
         pos, _ = pybullet.getBasePositionAndOrientation(self.body)
