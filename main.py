@@ -70,6 +70,11 @@ maze_size = 5
 fps = 60
 
 
+from collision_group import CollisionGroup
+
+CollisionGroup.init()
+
+
 class Window(Qt3DExtras.Qt3DWindow):
 
     camera_index = 0
@@ -79,10 +84,12 @@ class Window(Qt3DExtras.Qt3DWindow):
     ground = None
     wall_list = list()
 
-    ball = None
+    # ball = None
     ball_list = None
 
     aim_line = None
+
+    target = None
 
     text_list = list()
 
@@ -214,7 +221,8 @@ class Window(Qt3DExtras.Qt3DWindow):
             self.timer.stop()
             self.close()
 
-        self.coordinate.update()
+        if self.coordinate is not None:
+            self.coordinate.update()
 
         player_pos, player_ori = pybullet.getBasePositionAndOrientation(self.player.body)
         player_linear_vel, player_angular_vel = pybullet.getBaseVelocity(self.player.body)
@@ -297,6 +305,18 @@ class Window(Qt3DExtras.Qt3DWindow):
 
         self.aim_line.update()
 
+        contact_points = pybullet.getContactPoints()
+        collision_events = []
+        for contact in contact_points:
+            if contact[1] in self.ball_list.body_list and contact[2] == self.target.body \
+                    or contact[2] in self.ball_list.body_list and contact[1] == self.target.body:
+                body_a = contact[1]
+                body_b = contact[2]
+                print(body_a, body_b, contact[9])
+                # collision_events.append((body_a, body_b, contact[8]))  # (A, B, 碰撞力)
+
+        self.target.update()
+
     def center_cursor(self):
         center_pos = self.mapToGlobal(QPoint(self.width() // 2, self.height() // 2))
         QCursor.setPos(center_pos)
@@ -314,6 +334,14 @@ class Window(Qt3DExtras.Qt3DWindow):
         self.ground.mesh.setHeight(grid_size * maze_size * 4)
 
         self.create_maze()
+
+        from target import Target
+
+        self.target = Target(
+            self.root_entity, grid_size,
+            QVector3D(grid_size * 1.1 * (maze_size - 0.5), grid_size * 0.5, grid_size * 1.1 * (maze_size - 0.5)),
+            QVector3D(0, 0, 90),
+        )
 
     def create_maze(self):
         from wall import Wall
@@ -429,6 +457,8 @@ class Window(Qt3DExtras.Qt3DWindow):
                 ]),
             )
             pybullet.changeDynamics(wall_body, -1, restitution=1)
+            pybullet.setCollisionFilterGroupMask(
+                wall_body, -1, CollisionGroup.get_group("env"), CollisionGroup.get_mask("env"))
 
     def keyPressEvent(self, event):
         # print(f"Key pressed: {event.modifiers()} {event.text()}")
@@ -536,7 +566,9 @@ class BulletPhysics:
         pybullet.setTimeStep(1 / fps)
 
         self.floor = pybullet.loadURDF("plane.urdf")
-        pybullet.changeDynamics(self.floor, -1, restitution=1)
+        pybullet.changeDynamics(self.floor, -1, restitution=0.9)
+        pybullet.setCollisionFilterGroupMask(
+            self.floor, -1, CollisionGroup.get_group("env"), CollisionGroup.get_mask("env"))
 
     @staticmethod
     def step_simulation():
@@ -585,3 +617,4 @@ if __name__ == '__main__':
     view.add_parts()
     view.show()
     sys.exit(app.exec())
+

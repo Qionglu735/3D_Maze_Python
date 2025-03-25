@@ -8,6 +8,8 @@ from PySide6.Qt3DRender import Qt3DRender
 
 import pybullet
 
+from collision_group import CollisionGroup
+
 
 class Ball:
 
@@ -45,12 +47,14 @@ class Ball:
             ),
             basePosition=[position.x(), position.z(), position.y()],
         )
-        pybullet.changeDynamics(self.body, -1, restitution=1)
+        pybullet.changeDynamics(self.body, -1, restitution=0.9)
         pybullet.resetBaseVelocity(self.body, linearVelocity=[
             vector.x(),
             vector.z(),
             vector.y(),
         ])
+        pybullet.setCollisionFilterGroupMask(
+            self.body, -1, CollisionGroup.get_group("ball"), CollisionGroup.get_mask("ball"))
 
         pos, _ = pybullet.getBasePositionAndOrientation(self.body)
 
@@ -73,12 +77,15 @@ class Ball:
 class BallList:
     _list = list()
 
+    body_list = list()
+
     def __init__(self, root_entity, size):
         self.root_entity = root_entity
         self.size = size
 
     def create_ball(self, position, vector):
         self._list.append(Ball(self.root_entity, self.size, position, vector))
+        self.body_list.append(self._list[-1].body)
 
         if len(self._list) > 10:
             pybullet.removeBody(self._list[0].body)

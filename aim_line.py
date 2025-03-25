@@ -8,6 +8,8 @@ from PySide6.Qt3DRender import Qt3DRender
 
 import pybullet
 
+from collision_group import CollisionGroup
+
 
 class AimLine:
     root_entity = None
@@ -34,7 +36,10 @@ class AimLine:
                 radius=self.size * 0.02,
             ),
         )
-        pybullet.changeDynamics(self.sim_body, -1, restitution=1)
+        pybullet.changeDynamics(self.sim_body, -1, restitution=0.9)
+
+        pybullet.setCollisionFilterGroupMask(
+            self.sim_body, -1, CollisionGroup.get_group("aim_line"), CollisionGroup.get_mask("aim_line"))
 
         # for i in range(self.sim_length // self.dot_feq):
         #     self.dot_list.append(Dot(self.root_entity, self.size, QVector3D(0, 0, 0)))
@@ -84,7 +89,7 @@ class AimLine:
                 dot.entity.setEnabled(False)
 
     def set_show(self):
-        print(len(self.pos_list), len(self.dot_list), len([x for x in self.dot_list if x.pos_set]))
+        # print(len(self.pos_list), len(self.dot_list), len([x for x in self.dot_list if x.pos_set]))
         self.showing = True
         self.show()
 

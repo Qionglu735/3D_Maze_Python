@@ -1,6 +1,8 @@
 
 import pybullet
 
+from collision_group import CollisionGroup
+
 
 class Player:
     mass = 10
@@ -28,3 +30,6 @@ class Player:
             linearDamping=1.0,
             localInertiaDiagonal=[1e9, 1e9, 0],
         )
+
+        pybullet.setCollisionFilterGroupMask(
+            self.body, -1, CollisionGroup.get_group("player"), CollisionGroup.get_mask("player"))
