@@ -3,6 +3,8 @@ from PySide6.Qt3DCore import Qt3DCore
 from PySide6.Qt3DExtras import Qt3DExtras
 from PySide6.QtGui import QVector3D, QColor
 
+from global_config import grid_size
+
 
 class Wall:
 
@@ -11,7 +13,7 @@ class Wall:
     transform = None
     material = None
 
-    def __init__(self, root_entity, grid_size):
+    def __init__(self, root_entity):
 
         self.entity = Qt3DCore.QEntity(root_entity)
 

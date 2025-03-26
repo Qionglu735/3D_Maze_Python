@@ -2,6 +2,7 @@
 import pybullet
 
 from collision_group import CollisionGroup
+from global_config import grid_size
 
 
 class Player:
@@ -9,7 +10,7 @@ class Player:
 
     body = None
 
-    def __init__(self, grid_size):
+    def __init__(self):
         self.mass = grid_size
         self.body = pybullet.createMultiBody(
             baseMass=self.mass,

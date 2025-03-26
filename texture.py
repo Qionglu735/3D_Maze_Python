@@ -1,9 +1,8 @@
 
-from PySide6.Qt3DCore import Qt3DCore
 from PySide6.Qt3DExtras import Qt3DExtras
 from PySide6.Qt3DRender import Qt3DRender
-from PySide6.QtCore import QUrl, QBuffer, QIODevice
-from PySide6.QtGui import QVector3D, QColor, QImage, QImageReader
+from PySide6.QtCore import QUrl
+from PySide6.QtGui import QColor, QImage
 
 import noise
 

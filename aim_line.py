@@ -1,19 +1,16 @@
 
-from PySide6.QtCore import Property, QObject, QPropertyAnimation, Signal, QPoint, Qt, QTimer, QEvent
-from PySide6.QtGui import QGuiApplication, QMatrix4x4, QQuaternion, QVector3D, QColor, QSurfaceFormat, QCursor, \
-    QVector2D
+from PySide6.QtGui import QVector3D, QColor
 from PySide6.Qt3DCore import Qt3DCore
 from PySide6.Qt3DExtras import Qt3DExtras
-from PySide6.Qt3DRender import Qt3DRender
 
 import pybullet
 
 from collision_group import CollisionGroup
+from global_config import grid_size, fps
 
 
 class AimLine:
     root_entity = None
-    size = 10
 
     sim_body = None
     pos_list = list()
@@ -24,16 +21,15 @@ class AimLine:
 
     showing = False
 
-    def __init__(self, root_entity, size, fps):
+    def __init__(self, root_entity):
         self.root_entity = root_entity
-        self.size = size
         self.sim_length = fps * 10
 
         self.sim_body = pybullet.createMultiBody(
-            baseMass=10,
+            baseMass=1,
             baseCollisionShapeIndex=pybullet.createCollisionShape(
                 pybullet.GEOM_SPHERE,
-                radius=self.size * 0.02,
+                radius=grid_size * 0.02,
             ),
         )
         pybullet.changeDynamics(self.sim_body, -1, restitution=0.9)
@@ -69,7 +65,7 @@ class AimLine:
                 if len(self.dot_list) > i // self.dot_feq:
                     self.dot_list[i // self.dot_feq].transform.setTranslation(pos)
                 else:
-                    self.dot_list.append(Dot(self.root_entity, self.size, pos))
+                    self.dot_list.append(Dot(self.root_entity, pos))
 
                 self.dot_list[i // self.dot_feq].pos_set = True
                 if self.showing:
@@ -105,7 +101,6 @@ class AimLine:
 class Dot:
 
     root_entity = None
-    size = None
 
     entity = None
     mesh = None
@@ -114,12 +109,11 @@ class Dot:
 
     pos_set = False
 
-    def __init__(self, root_entity, size, position):
+    def __init__(self, root_entity, position):
         self.root_entity = root_entity
-        self.size = size
 
         self.mesh = Qt3DExtras.QSphereMesh(self.root_entity)
-        self.mesh.setRadius(self.size * 0.02)
+        self.mesh.setRadius(grid_size * 0.02)
 
         self.material = Qt3DExtras.QPhongAlphaMaterial(self.root_entity)
         self.material.setAmbient(QColor(255, 255, 255))
@@ -137,5 +131,3 @@ class Dot:
         self.entity.addComponent(self.mesh)
         self.entity.addComponent(self.material)
         self.entity.addComponent(self.transform)
-
-

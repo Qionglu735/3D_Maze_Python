@@ -1,19 +1,17 @@
-from PySide6 import QtGui
-from PySide6.QtCore import Property, QObject, QPropertyAnimation, Signal, QPoint, Qt, QTimer, QEvent
-from PySide6.QtGui import QGuiApplication, QMatrix4x4, QQuaternion, QVector3D, QColor, QSurfaceFormat, QCursor, \
-    QVector2D
+
+from PySide6.QtCore import Property, QObject, Signal, QPoint, Qt, QTimer, QEvent
+from PySide6.QtGui import QGuiApplication, QMatrix4x4, QQuaternion, QVector3D, QColor, QSurfaceFormat, QCursor
 from PySide6.Qt3DCore import Qt3DCore
 from PySide6.Qt3DExtras import Qt3DExtras
 from PySide6.Qt3DRender import Qt3DRender
 
+import math
 import pybullet
 import pybullet_data
-
-import math
-import random
 import sys
 
-random.seed(1001)
+from collision_group import CollisionGroup
+from global_config import grid_size, maze_size, fps
 
 
 class OrbitTransformController(QObject):
@@ -60,17 +58,6 @@ class OrbitTransformController(QObject):
     angle = Property(float, getAngle, setAngle, notify=angleChanged)
     radius = Property(float, getRadius, setRadius, notify=radiusChanged)
 
-
-grid_size = 10
-maze_size = 5
-
-# fps = 1
-# fps = 10
-# fps = 30
-fps = 60
-
-
-from collision_group import CollisionGroup
 
 CollisionGroup.init()
 
@@ -182,7 +169,7 @@ class Window(Qt3DExtras.Qt3DWindow):
 
         from player import Player
 
-        self.player = Player(grid_size)
+        self.player = Player()
         self.last_player_move_vector = None
 
         player_pos, _ = pybullet.getBasePositionAndOrientation(self.player.body)
@@ -204,10 +191,10 @@ class Window(Qt3DExtras.Qt3DWindow):
         player_pos, _ = pybullet.getBasePositionAndOrientation(self.player.body)
 
         from ball import BallList
-        self.ball_list = BallList(self.root_entity, grid_size)
+        self.ball_list = BallList(self.root_entity)
 
         from aim_line import AimLine
-        self.aim_line = AimLine(self.root_entity, grid_size, fps)
+        self.aim_line = AimLine(self.root_entity)
         self.aim_line.set_pos(
             QVector3D(player_pos[0], player_pos[2] - grid_size * 0.1, player_pos[1]) + self.camera_list[2].view_center,
             QVector3D(1, 0, 0),
@@ -325,7 +312,7 @@ class Window(Qt3DExtras.Qt3DWindow):
 
         from coordinate import Coordinate
 
-        self.coordinate = Coordinate(self.root_entity, grid_size)
+        self.coordinate = Coordinate(self.root_entity)
 
         from ground import Ground
 
@@ -338,7 +325,7 @@ class Window(Qt3DExtras.Qt3DWindow):
         from target import Target
 
         self.target = Target(
-            self.root_entity, grid_size,
+            self.root_entity,
             QVector3D(grid_size * 1.1 * (maze_size - 0.5), grid_size * 0.5, grid_size * 1.1 * (maze_size - 0.5)),
             QVector3D(0, 0, 90),
         )
@@ -360,7 +347,7 @@ class Window(Qt3DExtras.Qt3DWindow):
         wall_material = wall_texture.create_material()
 
         def create_wall(x, y, z, rotate=False):
-            _wall = Wall(self.root_entity, grid_size)
+            _wall = Wall(self.root_entity)
             _wall.transform.setTranslation(QVector3D(x, y, z))
             if rotate:
                 _wall.transform.setRotation(QQuaternion.fromEulerAngles(0, 90, 0))

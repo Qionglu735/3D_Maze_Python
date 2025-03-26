@@ -1,8 +1,6 @@
 
-from PySide6.QtCore import QObject, Qt, QTimer
-from PySide6.QtGui import QVector3D, QCursor, QVector2D
-
-import math
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QVector3D, QVector2D
 
 
 class CameraController:

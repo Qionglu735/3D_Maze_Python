@@ -2,8 +2,6 @@
 import itertools
 import random
 
-# random.seed(1001)
-
 random_range = 100
 
 node_access_rate = 1  # close some node before prim. 0 for all, 1 for none
@@ -254,8 +252,3 @@ class Maze:
                 if self.e_list[i][j].w < random_range * (edge_access_rate - 1):
                     self.e_prim_list[i][j] = self.e_list[i][j]
                     self.e_prim_list[j][i] = self.e_list[j][i]
-
-
-
-
-

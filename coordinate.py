@@ -3,6 +3,8 @@ from PySide6.Qt3DCore import Qt3DCore
 from PySide6.Qt3DExtras import Qt3DExtras
 from PySide6.QtGui import QVector3D, QColor
 
+from global_config import grid_size
+
 
 class Coordinate:
 
@@ -10,7 +12,8 @@ class Coordinate:
     y_cube_list = list()
     z_cube_list = list()
 
-    def __init__(self, root_entity, size):
+    def __init__(self, root_entity):
+        size = grid_size
 
         self.o_mesh = Qt3DExtras.QCuboidMesh(xExtent=size * 0.35, yExtent=size * 0.35, zExtent=size * 0.35)
         self.x_mesh = Qt3DExtras.QCuboidMesh(xExtent=size * 200, yExtent=size * 0.15, zExtent=size * 0.15)
@@ -53,7 +56,7 @@ class Coordinate:
         self.z_entity.addComponent(self.z_transform)
 
         self.count = 200
-        self.distance = size
+        self.distance = grid_size
         for i in range(self.count):
             self.x_cube_list.append({
                 "entity": Qt3DCore.QEntity(root_entity),
