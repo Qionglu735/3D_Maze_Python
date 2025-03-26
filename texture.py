@@ -21,7 +21,6 @@ class Texture:
     def generate_random_texture(self, size=1024):
         scale = 128
         image = QImage(size, size, QImage.Format.Format_RGB32)
-        v_list = list()
         for x in range(size):
             for y in range(size):
                 value = noise.pnoise2(
@@ -58,7 +57,7 @@ class Texture:
         texture_loader = Qt3DRender.QTextureLoader(self.root_entity)
         texture_loader.setSource(QUrl.fromLocalFile(self.texture_file))
 
-        texture_material = Qt3DExtras.QTextureMaterial(self.root_entity)
+        texture_material = Qt3DExtras.QTextureMaterial()
         texture_material.setTexture(texture_loader)
 
         return texture_material

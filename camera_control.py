@@ -2,9 +2,11 @@
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QVector3D, QVector2D
 
+from global_config import grid_size
+
 
 class CameraController:
-    movement_speed = 5.0
+    movement_speed = grid_size * 0.05
     view_speed = 0.01
 
     last_cursor_pos = None

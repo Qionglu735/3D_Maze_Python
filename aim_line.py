@@ -14,7 +14,9 @@ class AimLine:
 
     sim_body = None
     pos_list = list()
-    sim_length = 3000
+    sim_length = 0
+
+    run_sim = False
 
     dot_list = list()
     dot_feq = 2
@@ -41,33 +43,41 @@ class AimLine:
         #     self.dot_list.append(Dot(self.root_entity, self.size, QVector3D(0, 0, 0)))
 
     def update(self):
-        if len(self.pos_list) < self.sim_length:
-            pos, _ = pybullet.getBasePositionAndOrientation(self.sim_body)
-            self.pos_list.append(QVector3D(pos[0], pos[2], pos[1]))
-            self.dot_update()
+        if self.run_sim:
+            if len(self.pos_list) < self.sim_length:
+                pos, _ = pybullet.getBasePositionAndOrientation(self.sim_body)
+                self.pos_list.append(QVector3D(pos[0], pos[2], pos[1]))
+                self.dot_update()
 
-    def set_pos(self, position, vector):
-        pybullet.resetBasePositionAndOrientation(self.sim_body, [
-            position.x(),
-            position.z(),
-            position.y(),
-        ], [0, 0, 0, 1])
-        pybullet.resetBaseVelocity(self.sim_body, linearVelocity=[
-            vector.x() * 25,
-            vector.z() * 25,
-            vector.y() * 25,
-        ])
-        self.pos_list.clear()
+    def enable_sim(self, position, vector):
+        if self.run_sim is False:
+            pybullet.resetBasePositionAndOrientation(self.sim_body, [
+                position.x(),
+                position.z(),
+                position.y(),
+            ], [0, 0, 0, 1])
+            pybullet.resetBaseVelocity(self.sim_body, linearVelocity=[
+                vector.x() * 25,
+                vector.z() * 25,
+                vector.y() * 25,
+            ])
+            self.run_sim = True
+
+    def cancel_sim(self):
+        if self.run_sim is True:
+            self.run_sim = False
+            self.pos_list.clear()
 
     def dot_update(self):
         for i, pos in enumerate(self.pos_list):
             if i % self.dot_feq == 0:
-                if len(self.dot_list) > i // self.dot_feq:
-                    self.dot_list[i // self.dot_feq].transform.setTranslation(pos)
+                dot_index = i // self.dot_feq
+                if dot_index < len(self.dot_list):
+                    self.dot_list[dot_index].transform.setTranslation(pos)
                 else:
                     self.dot_list.append(Dot(self.root_entity, pos))
 
-                self.dot_list[i // self.dot_feq].pos_set = True
+                self.dot_list[dot_index].pos_set = True
                 if self.showing:
                     self.dot_list[i // self.dot_feq].entity.setEnabled(True)
 
@@ -77,30 +87,56 @@ class AimLine:
                 if self.showing:
                     dot.entity.setEnabled(False)
 
-    def show(self):
+    def set_show(self):
+        self.showing = True
         for dot in self.dot_list:
             if dot.pos_set:
                 dot.entity.setEnabled(True)
             else:
                 dot.entity.setEnabled(False)
 
-    def set_show(self):
-        # print(len(self.pos_list), len(self.dot_list), len([x for x in self.dot_list if x.pos_set]))
-        self.showing = True
-        self.show()
-
-    def hide(self):
+    def set_hide(self):
+        self.showing = False
         for dot in self.dot_list:
             dot.entity.setEnabled(False)
 
-    def set_hide(self):
-        self.showing = False
-        self.hide()
+
+class DotMesh(Qt3DExtras.QSphereMesh):
+
+    _mesh = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._mesh is None:
+            cls._mesh = super().__new__(cls)
+        return cls._mesh
+
+    def __init__(self):
+        if not hasattr(self, "_initialized"):
+            super().__init__()
+            self._initialized = True
+            self._mesh.setRadius(grid_size * 0.02)
+
+
+class DotMaterial(Qt3DExtras.QPhongAlphaMaterial):
+    _material = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._material is None:
+            cls._material = super().__new__(cls, *args, **kwargs)
+        return cls._material
+
+    def __init__(self):
+        if not hasattr(self, "_initialized"):
+            super().__init__()
+            self._initialized = True
+            self._material.setAmbient(QColor(255, 255, 255))
+            self._material.setDiffuse(QColor(255, 255, 255))
+            self._material.setSpecular(QColor(0, 0, 0))
+            self._material.setShininess(0)
+            self._material.setAlpha(0.7)
 
 
 class Dot:
-
-    root_entity = None
 
     entity = None
     mesh = None
@@ -110,22 +146,17 @@ class Dot:
     pos_set = False
 
     def __init__(self, root_entity, position):
-        self.root_entity = root_entity
 
-        self.mesh = Qt3DExtras.QSphereMesh(self.root_entity)
+        # self.mest = DotMesh()
+        self.mesh = Qt3DExtras.QSphereMesh()
         self.mesh.setRadius(grid_size * 0.02)
 
-        self.material = Qt3DExtras.QPhongAlphaMaterial(self.root_entity)
-        self.material.setAmbient(QColor(255, 255, 255))
-        self.material.setDiffuse(QColor(255, 255, 255))
-        self.material.setSpecular(QColor(0, 0, 0))
-        self.material.setShininess(0)
-        self.material.setAlpha(0.7)
+        self.material = DotMaterial()
 
-        self.transform = Qt3DCore.QTransform(self.root_entity)
+        self.transform = Qt3DCore.QTransform(root_entity)
         self.transform.setTranslation(position)
 
-        self.entity = Qt3DCore.QEntity(self.root_entity)
+        self.entity = Qt3DCore.QEntity(root_entity)
         self.entity.setEnabled(False)
 
         self.entity.addComponent(self.mesh)

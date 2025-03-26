@@ -69,16 +69,12 @@ class Window(Qt3DExtras.Qt3DWindow):
 
     coordinate = None
     ground = None
+    player = None
     wall_list = list()
-
-    # ball = None
-    ball_list = None
-
-    aim_line = None
-
-    target = None
-
     text_list = list()
+    ball_list = None
+    aim_line = None
+    target = None
 
     yaw_angle = 0
     pitch_angle = 0
@@ -117,7 +113,7 @@ class Window(Qt3DExtras.Qt3DWindow):
         self.camera_list = [CameraSave() for _ in range(8)]
         self.camera_list[0].save(self.camera())
 
-        self.camera().lens().setPerspectiveProjection(45, 16 / 9, 0.1, 1000)
+        self.camera().lens().setPerspectiveProjection(45, 16 / 9, 0.001, 1000)
 
         camera_1 = self.camera_list[1]
         camera_1.position = QVector3D(grid_size * maze_size / 2, grid_size * maze_size * 2, grid_size * maze_size)
@@ -132,6 +128,14 @@ class Window(Qt3DExtras.Qt3DWindow):
         camera_3.position = QVector3D(100, 100, 100)
         camera_3.view_center = QVector3D(0, 0, 0)
         camera_3.up_vector = QVector3D(0, 1, 0)
+
+        from camera_control import CameraController
+
+        self.controller = CameraController(self.camera())
+        self.controller.last_cursor_pos = self.mapFromGlobal(QCursor.pos())
+
+        self.camera_index = 1
+        self.camera_list[self.camera_index].load(self.camera())
 
         # Root entity
         self.root_entity = Qt3DCore.QEntity()
@@ -162,43 +166,13 @@ class Window(Qt3DExtras.Qt3DWindow):
         self.directional_light_entity.addComponent(self.light_transform)
 
         self.create_scene()
-        from camera_control import CameraController
-
-        self.controller = CameraController(self.camera())
-        self.controller.last_cursor_pos = self.mapFromGlobal(QCursor.pos())
-
-        from player import Player
-
-        self.player = Player()
-        self.last_player_move_vector = None
-
-        player_pos, _ = pybullet.getBasePositionAndOrientation(self.player.body)
-
-        camera_2 = self.camera_list[2]
-        camera_2.position = QVector3D(player_pos[0], player_pos[2], player_pos[1])
-        camera_2.view_center = QVector3D(player_pos[0] + 1, player_pos[2], player_pos[1])
-        camera_2.up_vector = QVector3D(0, 1, 0)
-
-        self.camera_index = 1
-        self.camera_list[self.camera_index].load(self.camera())
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_physics)
         self.timer.start(math.floor(1000 / fps))
 
     def add_parts(self):
-
-        player_pos, _ = pybullet.getBasePositionAndOrientation(self.player.body)
-
-        from ball import BallList
-        self.ball_list = BallList(self.root_entity)
-
-        from aim_line import AimLine
-        self.aim_line = AimLine(self.root_entity)
-        self.aim_line.set_pos(
-            QVector3D(player_pos[0], player_pos[2] - grid_size * 0.1, player_pos[1]) + self.camera_list[2].view_center,
-            QVector3D(1, 0, 0),
-        )
+        pass
 
     def update_physics(self):
 
@@ -262,15 +236,18 @@ class Window(Qt3DExtras.Qt3DWindow):
                 camera_yaw = 0
 
             if player_move_vector.length() + player_view_move_vector.length() > 0:
-                self.aim_line.set_pos(
+                self.aim_line.cancel_sim()
+                if self.aim_line.showing:
+                    # self.aim_line.hide()
+                    self.aim_line.set_hide()
+            else:
+                self.aim_line.enable_sim(
                     QVector3D(player_pos[0], player_pos[2] - grid_size * 0.1, player_pos[1]) + camera_view_vector,
                     camera_view_vector
                 )
                 if self.aim_line.showing:
-                    self.aim_line.hide()
-            else:
-                if self.aim_line.showing:
-                    self.aim_line.show()
+                    # self.aim_line.show()
+                    self.aim_line.set_show()
 
             self.center_cursor()
             self.controller.last_cursor_pos = self.mapFromGlobal(QCursor.pos())
@@ -317,10 +294,34 @@ class Window(Qt3DExtras.Qt3DWindow):
         from ground import Ground
 
         self.ground = Ground(self.root_entity)
-        self.ground.mesh.setWidth(grid_size * maze_size * 4)
-        self.ground.mesh.setHeight(grid_size * maze_size * 4)
+
+        from player import Player
+
+        self.player = Player()
+
+        player_pos, _ = pybullet.getBasePositionAndOrientation(self.player.body)
+
+        camera_2 = self.camera_list[2]
+        camera_2.position = QVector3D(player_pos[0], player_pos[2], player_pos[1])
+        camera_2.view_center = QVector3D(player_pos[0] + 1, player_pos[2], player_pos[1])
+        camera_2.up_vector = QVector3D(0, 1, 0)
+
+        from aim_line import AimLine
+        self.aim_line = AimLine(self.root_entity)
+        # self.aim_line.set_pos(
+        #     QVector3D(player_pos[0], player_pos[2] - grid_size * 0.1, player_pos[1]) + self.camera_list[2].view_center,
+        #     QVector3D(1, 0, 0),
+        # )
+        # self.aim_line.set_pos(
+        #     QVector3D(5, 5, 5),
+        #     QVector3D(1, 0, 0),
+        # )
 
         self.create_maze()
+
+        from ball import BallList
+
+        self.ball_list = BallList(self.root_entity)
 
         from target import Target
 
@@ -333,7 +334,6 @@ class Window(Qt3DExtras.Qt3DWindow):
     def create_maze(self):
         from wall import Wall
         from text import Text
-        from texture import Texture
 
         from map_generator import Maze
 
@@ -342,16 +342,12 @@ class Window(Qt3DExtras.Qt3DWindow):
         maze.prim()
         maze.after_prim()
 
-        wall_texture = Texture(self.root_entity)
-        wall_texture.generate_random_texture()
-        wall_material = wall_texture.create_material()
-
         def create_wall(x, y, z, rotate=False):
-            _wall = Wall(self.root_entity)
-            _wall.transform.setTranslation(QVector3D(x, y, z))
             if rotate:
-                _wall.transform.setRotation(QQuaternion.fromEulerAngles(0, 90, 0))
-            _wall.entity.addComponent(wall_material)
+                _wall = Wall(self.root_entity, QVector3D(x, y, z), QQuaternion.fromEulerAngles(0, 90, 0))
+            else:
+                _wall = Wall(self.root_entity, QVector3D(x, y, z), QQuaternion.fromEulerAngles(0, 0, 0))
+
             self.wall_list.append(_wall)
 
         for v1 in maze.v_list:
@@ -420,33 +416,6 @@ class Window(Qt3DExtras.Qt3DWindow):
                     (v1.y + 1) * grid_size * 1.1,
                 )
 
-        for wall in self.wall_list:
-            wall_shape = pybullet.createCollisionShape(
-                pybullet.GEOM_BOX,
-                halfExtents=[
-                    wall.mesh.xExtent() / 2,
-                    wall.mesh.zExtent() / 2,
-                    wall.mesh.yExtent() / 2,
-                ],
-            )
-            wall_body = pybullet.createMultiBody(
-                baseMass=0,
-                baseCollisionShapeIndex=wall_shape,
-                basePosition=[
-                    wall.transform.translation().x(),
-                    wall.transform.translation().z(),
-                    wall.transform.translation().y(),
-                ],
-                baseOrientation=pybullet.getQuaternionFromEuler([
-                    wall.transform.rotationX() / 180 * math.pi,
-                    wall.transform.rotationZ() / 180 * math.pi,
-                    wall.transform.rotationY() / 180 * math.pi,
-                ]),
-            )
-            pybullet.changeDynamics(wall_body, -1, restitution=1)
-            pybullet.setCollisionFilterGroupMask(
-                wall_body, -1, CollisionGroup.get_group("env"), CollisionGroup.get_mask("env"))
-
     def keyPressEvent(self, event):
         # print(f"Key pressed: {event.modifiers()} {event.text()}")
 
@@ -470,12 +439,12 @@ class Window(Qt3DExtras.Qt3DWindow):
                 self.controller.movement_speed = grid_size * 10
                 self.setCursor(Qt.CursorShape.BlankCursor)
 
-                player_pos, player_ori = pybullet.getBasePositionAndOrientation(self.player.body)
-                self.aim_line.set_pos(
-                    QVector3D(player_pos[0], player_pos[2] - grid_size * 0.1, player_pos[1]) + self.camera_list[
-                        2].view_center,
-                    self.camera().viewCenter() - self.camera().position(),
-                )
+                # player_pos, player_ori = pybullet.getBasePositionAndOrientation(self.player.body)
+                # self.aim_line.set_pos(
+                #     QVector3D(player_pos[0], player_pos[2] - grid_size * 0.1, player_pos[1]) + self.camera_list[
+                #         2].view_center,
+                #     self.camera().viewCenter() - self.camera().position(),
+                # )
             elif event.key() == Qt.Key.Key_F3:
                 self.camera_list[self.camera_index].save(self.camera())
                 # self.camera_list[self.camera_index].print_status(self.camera())
@@ -552,10 +521,10 @@ class BulletPhysics:
         pybullet.setGravity(0, 0, -9.8)
         pybullet.setTimeStep(1 / fps)
 
-        self.floor = pybullet.loadURDF("plane.urdf")
-        pybullet.changeDynamics(self.floor, -1, restitution=0.9)
-        pybullet.setCollisionFilterGroupMask(
-            self.floor, -1, CollisionGroup.get_group("env"), CollisionGroup.get_mask("env"))
+        # self.floor = pybullet.loadURDF("plane.urdf")
+        # pybullet.changeDynamics(self.floor, -1, restitution=0.9)
+        # pybullet.setCollisionFilterGroupMask(
+        #     self.floor, -1, CollisionGroup.get_group("env"), CollisionGroup.get_mask("env"))
 
     @staticmethod
     def step_simulation():
