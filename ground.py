@@ -8,6 +8,7 @@ import pybullet
 from collision_group import CollisionGroup
 from global_config import grid_size, maze_size
 
+
 class Ground:
 
     entity = None

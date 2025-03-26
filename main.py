@@ -171,11 +171,7 @@ class Window(Qt3DExtras.Qt3DWindow):
         self.timer.timeout.connect(self.update_physics)
         self.timer.start(math.floor(1000 / fps))
 
-    def add_parts(self):
-        pass
-
     def update_physics(self):
-
         try:
             self.physics.step_simulation()
         except pybullet.error:
@@ -232,7 +228,7 @@ class Window(Qt3DExtras.Qt3DWindow):
                 if camera_view_vector.z() < 0:
                     camera_yaw *= -1
             except ValueError:
-                print(camera_view_vector.x())
+                print("camera_view_vector.x:", camera_view_vector.x())
                 camera_yaw = 0
 
             if player_move_vector.length() + player_view_move_vector.length() > 0:
@@ -269,6 +265,8 @@ class Window(Qt3DExtras.Qt3DWindow):
 
         self.aim_line.update()
 
+        self.target.update()
+
         contact_points = pybullet.getContactPoints()
         collision_events = []
         for contact in contact_points:
@@ -277,9 +275,7 @@ class Window(Qt3DExtras.Qt3DWindow):
                 body_a = contact[1]
                 body_b = contact[2]
                 print(body_a, body_b, contact[9])
-                # collision_events.append((body_a, body_b, contact[8]))  # (A, B, 碰撞力)
-
-        self.target.update()
+                collision_events.append((body_a, body_b, contact[9]))
 
     def center_cursor(self):
         center_pos = self.mapToGlobal(QPoint(self.width() // 2, self.height() // 2))
@@ -307,15 +303,8 @@ class Window(Qt3DExtras.Qt3DWindow):
         camera_2.up_vector = QVector3D(0, 1, 0)
 
         from aim_line import AimLine
+
         self.aim_line = AimLine(self.root_entity)
-        # self.aim_line.set_pos(
-        #     QVector3D(player_pos[0], player_pos[2] - grid_size * 0.1, player_pos[1]) + self.camera_list[2].view_center,
-        #     QVector3D(1, 0, 0),
-        # )
-        # self.aim_line.set_pos(
-        #     QVector3D(5, 5, 5),
-        #     QVector3D(1, 0, 0),
-        # )
 
         self.create_maze()
 
@@ -438,13 +427,6 @@ class Window(Qt3DExtras.Qt3DWindow):
 
                 self.controller.movement_speed = grid_size * 10
                 self.setCursor(Qt.CursorShape.BlankCursor)
-
-                # player_pos, player_ori = pybullet.getBasePositionAndOrientation(self.player.body)
-                # self.aim_line.set_pos(
-                #     QVector3D(player_pos[0], player_pos[2] - grid_size * 0.1, player_pos[1]) + self.camera_list[
-                #         2].view_center,
-                #     self.camera().viewCenter() - self.camera().position(),
-                # )
             elif event.key() == Qt.Key.Key_F3:
                 self.camera_list[self.camera_index].save(self.camera())
                 # self.camera_list[self.camera_index].print_status(self.camera())
@@ -479,7 +461,7 @@ class Window(Qt3DExtras.Qt3DWindow):
                 view_vector = (self.controller.camera.viewCenter() - self.controller.camera.position()).normalized()
                 self.ball_list.create_ball(
                     QVector3D(player_pos[0], player_pos[2] - grid_size * 0.1, player_pos[1]) + view_vector,
-                    view_vector * 25,
+                    view_vector * grid_size ** 1.8,
                 )
             elif event.button() == Qt.MouseButton.RightButton:
                 self.aim_line.set_show()
@@ -520,11 +502,6 @@ class BulletPhysics:
         pybullet.setAdditionalSearchPath(pybullet_data.getDataPath())
         pybullet.setGravity(0, 0, -9.8)
         pybullet.setTimeStep(1 / fps)
-
-        # self.floor = pybullet.loadURDF("plane.urdf")
-        # pybullet.changeDynamics(self.floor, -1, restitution=0.9)
-        # pybullet.setCollisionFilterGroupMask(
-        #     self.floor, -1, CollisionGroup.get_group("env"), CollisionGroup.get_mask("env"))
 
     @staticmethod
     def step_simulation():

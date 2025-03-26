@@ -40,8 +40,8 @@ class Target:
         self.mesh = Qt3DExtras.QCylinderMesh(root_entity)
         self.mesh.setRadius(grid_size * 0.2)
         self.mesh.setLength(grid_size * 0.01)
-        self.mesh.setRings(2)
-        self.mesh.setSlices(120)
+        self.mesh.setRings(16)
+        self.mesh.setSlices(360)
 
         self.transform = Qt3DCore.QTransform(root_entity)
         self.transform.setTranslation(QVector3D(pos[0], pos[2], pos[1]))
@@ -67,6 +67,7 @@ class Target:
         self.transform.setRotation(QQuaternion.fromEulerAngles(QVector3D(
             ori_euler_degree[0], ori_euler_degree[2], ori_euler_degree[1],
         )))
-        ori_euler[2] += 360 / fps / 180 * math.pi
+        rotate_degree = 90 / fps
+        ori_euler[2] += rotate_degree / 180 * math.pi
         pybullet.resetBasePositionAndOrientation(self.body, pos, pybullet.getQuaternionFromEuler(ori_euler))
         pybullet.resetBaseVelocity(self.body, linearVelocity=[0, 0, 0], angularVelocity=[0, 0, 0])

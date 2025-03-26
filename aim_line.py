@@ -39,9 +39,6 @@ class AimLine:
         pybullet.setCollisionFilterGroupMask(
             self.sim_body, -1, CollisionGroup.get_group("aim_line"), CollisionGroup.get_mask("aim_line"))
 
-        # for i in range(self.sim_length // self.dot_feq):
-        #     self.dot_list.append(Dot(self.root_entity, self.size, QVector3D(0, 0, 0)))
-
     def update(self):
         if self.run_sim:
             if len(self.pos_list) < self.sim_length:
