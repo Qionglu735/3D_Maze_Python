@@ -547,7 +547,5 @@ class CameraSave:
 if __name__ == '__main__':
     app = QGuiApplication(sys.argv)
     view = Window()
-    view.add_parts()
     view.show()
     sys.exit(app.exec())
-
