@@ -31,7 +31,7 @@ class Ground:
 
         self.material = Qt3DExtras.QPhongMaterial(root_entity)
         # self.material.setAmbient(QColor(0, 127, 0))
-        self.material.setDiffuse(QColor(0, 63, 0))
+        self.material.setDiffuse(QColor(0, 31, 0))
         self.material.setSpecular(QColor(0, 0, 0))
         self.material.setShininess(0)
 

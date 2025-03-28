@@ -19,7 +19,7 @@ class Texture:
         self.root_entity = root_entity
 
     def generate_random_texture(self, size=1024):
-        scale = 128
+        scale = 512
         image = QImage(size, size, QImage.Format.Format_RGB32)
         for x in range(size):
             for y in range(size):
