@@ -6,7 +6,7 @@ import math
 import pybullet
 
 from collision_group import CollisionGroup
-from global_config import grid_size
+from global_config import grid_size, camera_layer
 from texture import Texture
 
 
@@ -69,6 +69,9 @@ class Wall:
         self.entity.addComponent(self.mesh)
         self.entity.addComponent(self.transform)
         self.entity.addComponent(self.material)
+
+        self.entity.addComponent(camera_layer["scene"])
+        self.entity.addComponent(camera_layer["ui"])
 
         self.body = pybullet.createMultiBody(
             baseMass=0,

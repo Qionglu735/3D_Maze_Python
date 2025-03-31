@@ -11,7 +11,7 @@ import pybullet_data
 import sys
 
 from collision_group import CollisionGroup
-from global_config import grid_size, maze_size, fps
+from global_config import grid_size, maze_size, fps, root_entity, camera_layer
 
 
 class OrbitTransformController(QObject):
@@ -138,7 +138,7 @@ class Window(Qt3DExtras.Qt3DWindow):
         self.camera_list[self.camera_index].load(self.camera())
 
         # Root entity
-        self.root_entity = Qt3DCore.QEntity()
+        self.root_entity = root_entity
         self.setRootEntity(self.root_entity)
 
         # For camera controls
@@ -165,37 +165,63 @@ class Window(Qt3DExtras.Qt3DWindow):
         self.directional_light_entity.addComponent(self.directional_light)
         self.directional_light_entity.addComponent(self.light_transform)
 
+        self.directional_light_entity.addComponent(camera_layer["scene"])
+
         self.create_scene()
 
-        # 创建第二个相机
+        """
+        QRenderSurfaceSelector
+            QViewport
+                QLayerFilter
+                    QCameraSelector
+                        QClearBuffers
+        """
+
+        # QRenderSurfaceSelector
+        self.surface_selector = Qt3DRender.QRenderSurfaceSelector()
+
+        # Main Viewport
+        self.viewport_main = Qt3DRender.QViewport(self.surface_selector)
+        self.viewport_main.setNormalizedRect(QRectF(0.0, 0.0, 1.0, 1.0))
+
+        # Main Layer filter
+        self.layer_filter_main = Qt3DRender.QLayerFilter(self.viewport_main)
+        self.layer_filter_main.addLayer(camera_layer["scene"])
+        print(self.layer_filter_main.filterMode(), self.layer_filter_main.layers())
+
+        # Main Camera selector
+        self.main_camera_selector = Qt3DRender.QCameraSelector(self.layer_filter_main)
+        self.main_camera_selector.setCamera(self.camera())
+
+        # Sub Camera
         self.second_camera = Qt3DRender.QCamera(self.root_entity)
         self.second_camera.lens().setPerspectiveProjection(45.0, 16.0 / 9.0, 0.1, 1000.0)
         self.second_camera.setPosition(QVector3D(grid_size * maze_size / 2, grid_size * maze_size * 2, grid_size * maze_size / 2))
         self.second_camera.setViewCenter(QVector3D(grid_size * maze_size / 2 + 1, 0, grid_size * maze_size / 2))
         self.second_camera.setUpVector = QVector3D(0, 1, 0)
 
-        # QRenderSurfaceSelector
-        self.surface_selector = Qt3DRender.QRenderSurfaceSelector()
+        # Sub ViewPort
+        self.viewport_sub = Qt3DRender.QViewport(self.surface_selector)
+        self.viewport_sub.setNormalizedRect(QRectF(0.7, 0.7, 0.3, 0.3))
+
+        # Sub Layer filter
+        self.layer_filter_sub = Qt3DRender.QLayerFilter(self.viewport_sub)
+        self.layer_filter_sub.addLayer(camera_layer["ui"])
+
+        # Sub Camera binding
+        self.camera_selector_sub = Qt3DRender.QCameraSelector(self.layer_filter_sub)
+        self.camera_selector_sub.setCamera(self.second_camera)
+
+        # Sub Layer filter
+        # self.layer_filter_sub = Qt3DRender.QLayerFilter(self.camera_selector_sub)
+        # self.layer_filter_sub.addLayer(self.ground.layer)
+
+        self.clear_buffers_sub = Qt3DRender.QClearBuffers(self.camera_selector_sub)
+        self.clear_buffers_sub.setBuffers(Qt3DRender.QClearBuffers.BufferType.DepthBuffer)
 
         # QRenderSettings
         self.render_settings = self.renderSettings()
         self.render_settings.setActiveFrameGraph(self.surface_selector)
-
-        # Main QViewport
-        self.viewport_main = Qt3DRender.QViewport(self.surface_selector)
-        self.viewport_main.setNormalizedRect(QRectF(0.0, 0.0, 1.0, 1.0))
-
-        # Sub QViewPort
-        self.viewport_sub = Qt3DRender.QViewport(self.viewport_main)
-        self.viewport_sub.setNormalizedRect(QRectF(0.7, 0.7, 0.3, 0.3))
-
-        # Main Camera binding
-        self.main_camera_selector = Qt3DRender.QCameraSelector(self.viewport_main)
-        self.main_camera_selector.setCamera(self.camera())
-
-        # Sub Camera binding
-        self.second_camera_selector = Qt3DRender.QCameraSelector(self.viewport_sub)
-        self.second_camera_selector.setCamera(self.second_camera)
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_physics)
