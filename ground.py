@@ -7,7 +7,8 @@ from PySide6.QtGui import QVector3D, QColor
 import pybullet
 
 from collision_group import CollisionGroup
-from global_config import grid_size, maze_size, camera_layer
+from global_config import grid_size, maze_size
+from viewport_manager import Layer
 
 
 class Ground:
@@ -39,10 +40,7 @@ class Ground:
         self.entity.addComponent(self.transform)
         self.entity.addComponent(self.material)
 
-        self.entity.addComponent(camera_layer["scene"])
-        # self.layer = Qt3DRender.QLayer(self.entity)
-        # self.layer.setRecursive(True)
-        # self.entity.addComponent(self.layer)
+        self.entity.addComponent(Layer.get("scene"))
 
         self.body = pybullet.loadURDF("plane.urdf")
         pybullet.changeDynamics(self.body, -1, restitution=0.9)

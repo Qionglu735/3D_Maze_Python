@@ -3,7 +3,8 @@ from PySide6.Qt3DCore import Qt3DCore
 from PySide6.Qt3DExtras import Qt3DExtras
 from PySide6.QtGui import QVector3D, QColor
 
-from global_config import grid_size, camera_layer
+from global_config import grid_size
+from viewport_manager import Layer
 
 
 class Coordinate:
@@ -55,10 +56,10 @@ class Coordinate:
         self.y_entity.addComponent(self.y_transform)
         self.z_entity.addComponent(self.z_transform)
 
-        self.o_entity.addComponent(camera_layer["ui"])
-        self.x_entity.addComponent(camera_layer["ui"])
-        self.y_entity.addComponent(camera_layer["ui"])
-        self.z_entity.addComponent(camera_layer["ui"])
+        self.o_entity.addComponent(Layer().get("scene"))
+        self.x_entity.addComponent(Layer().get("scene"))
+        self.y_entity.addComponent(Layer().get("scene"))
+        self.z_entity.addComponent(Layer().get("scene"))
 
         self.count = 200
         self.distance = grid_size

@@ -6,8 +6,9 @@ import math
 import pybullet
 
 from collision_group import CollisionGroup
-from global_config import grid_size, camera_layer
+from global_config import grid_size
 from texture import Texture
+from viewport_manager import Layer
 
 
 class WallMesh(Qt3DExtras.QCuboidMesh):
@@ -70,8 +71,8 @@ class Wall:
         self.entity.addComponent(self.transform)
         self.entity.addComponent(self.material)
 
-        self.entity.addComponent(camera_layer["scene"])
-        self.entity.addComponent(camera_layer["ui"])
+        self.entity.addComponent(Layer().get("scene"))
+        self.entity.addComponent(Layer().get("ui"))
 
         self.body = pybullet.createMultiBody(
             baseMass=0,

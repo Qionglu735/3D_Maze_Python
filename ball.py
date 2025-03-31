@@ -7,6 +7,7 @@ import pybullet
 
 from collision_group import CollisionGroup
 from global_config import grid_size
+from viewport_manager import Layer
 
 
 class Ball:
@@ -64,6 +65,7 @@ class Ball:
         self.entity.addComponent(self.mesh)
         self.entity.addComponent(self.material)
         self.entity.addComponent(self.transform)
+        self.entity.addComponent(Layer().get("scene"))
 
     def update(self):
         pos, _ = pybullet.getBasePositionAndOrientation(self.body)
@@ -82,7 +84,7 @@ class BallList:
         self._list.append(Ball(self.root_entity, position, vector))
         self.body_list.append(self._list[-1].body)
 
-        if len(self._list) > 10:
+        if len(self._list) > 20:
             pybullet.removeBody(self._list[0].body)
             self._list[0].entity.setParent(None)
             self._list[0].entity.deleteLater()

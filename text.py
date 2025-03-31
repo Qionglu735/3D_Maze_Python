@@ -3,6 +3,8 @@ from PySide6.Qt3DCore import Qt3DCore
 from PySide6.Qt3DExtras import Qt3DExtras
 from PySide6.QtGui import QVector3D, QColor, QFont
 
+from viewport_manager import Layer
+
 
 class Text:
 
@@ -20,3 +22,4 @@ class Text:
         self.transform.setTranslation(QVector3D(self.entity.width() / -2, self.entity.height() / -2, 0))
 
         self.entity.addComponent(self.transform)
+        self.entity.addComponent(Layer().get("scene"))

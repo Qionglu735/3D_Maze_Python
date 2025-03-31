@@ -11,7 +11,8 @@ import pybullet_data
 import sys
 
 from collision_group import CollisionGroup
-from global_config import grid_size, maze_size, fps, root_entity, camera_layer
+from global_config import grid_size, maze_size, fps, root_entity
+from viewport_manager import Layer, Viewport
 
 
 class OrbitTransformController(QObject):
@@ -80,6 +81,8 @@ class Window(Qt3DExtras.Qt3DWindow):
     pitch_angle = 0
 
     frame_counter = 0
+
+    viewport_list = list()
 
     def __init__(self):
         super().__init__()
@@ -165,63 +168,24 @@ class Window(Qt3DExtras.Qt3DWindow):
         self.directional_light_entity.addComponent(self.directional_light)
         self.directional_light_entity.addComponent(self.light_transform)
 
-        self.directional_light_entity.addComponent(camera_layer["scene"])
+        self.directional_light_entity.addComponent(Layer().get("scene"))
 
         self.create_scene()
 
-        """
-        QRenderSurfaceSelector
-            QViewport
-                QLayerFilter
-                    QCameraSelector
-                        QClearBuffers
-        """
-
-        # QRenderSurfaceSelector
         self.surface_selector = Qt3DRender.QRenderSurfaceSelector()
+        self.renderSettings().setActiveFrameGraph(self.surface_selector)
 
-        # Main Viewport
-        self.viewport_main = Qt3DRender.QViewport(self.surface_selector)
-        self.viewport_main.setNormalizedRect(QRectF(0.0, 0.0, 1.0, 1.0))
+        self.viewport_list.append(Viewport(self.surface_selector, self.camera()))
+        self.viewport_list[0].layer_filter.addLayer(Layer().get("scene"))
 
-        # Main Layer filter
-        self.layer_filter_main = Qt3DRender.QLayerFilter(self.viewport_main)
-        self.layer_filter_main.addLayer(camera_layer["scene"])
-        print(self.layer_filter_main.filterMode(), self.layer_filter_main.layers())
+        self.viewport_list.append(Viewport(self.surface_selector))
+        self.viewport_list[1].camera.lens().setPerspectiveProjection(45.0, 16.0 / 9.0, 0.1, 1000.0)
+        self.viewport_list[1].camera.setPosition(QVector3D(grid_size * maze_size / 2, grid_size * maze_size * 2, grid_size * maze_size / 2))
+        self.viewport_list[1].camera.setViewCenter(QVector3D(grid_size * maze_size / 2 + 1, 0, grid_size * maze_size / 2))
+        self.viewport_list[1].camera.setUpVector(QVector3D(0, 1, 0))
 
-        # Main Camera selector
-        self.main_camera_selector = Qt3DRender.QCameraSelector(self.layer_filter_main)
-        self.main_camera_selector.setCamera(self.camera())
-
-        # Sub Camera
-        self.second_camera = Qt3DRender.QCamera(self.root_entity)
-        self.second_camera.lens().setPerspectiveProjection(45.0, 16.0 / 9.0, 0.1, 1000.0)
-        self.second_camera.setPosition(QVector3D(grid_size * maze_size / 2, grid_size * maze_size * 2, grid_size * maze_size / 2))
-        self.second_camera.setViewCenter(QVector3D(grid_size * maze_size / 2 + 1, 0, grid_size * maze_size / 2))
-        self.second_camera.setUpVector = QVector3D(0, 1, 0)
-
-        # Sub ViewPort
-        self.viewport_sub = Qt3DRender.QViewport(self.surface_selector)
-        self.viewport_sub.setNormalizedRect(QRectF(0.7, 0.7, 0.3, 0.3))
-
-        # Sub Layer filter
-        self.layer_filter_sub = Qt3DRender.QLayerFilter(self.viewport_sub)
-        self.layer_filter_sub.addLayer(camera_layer["ui"])
-
-        # Sub Camera binding
-        self.camera_selector_sub = Qt3DRender.QCameraSelector(self.layer_filter_sub)
-        self.camera_selector_sub.setCamera(self.second_camera)
-
-        # Sub Layer filter
-        # self.layer_filter_sub = Qt3DRender.QLayerFilter(self.camera_selector_sub)
-        # self.layer_filter_sub.addLayer(self.ground.layer)
-
-        self.clear_buffers_sub = Qt3DRender.QClearBuffers(self.camera_selector_sub)
-        self.clear_buffers_sub.setBuffers(Qt3DRender.QClearBuffers.BufferType.DepthBuffer)
-
-        # QRenderSettings
-        self.render_settings = self.renderSettings()
-        self.render_settings.setActiveFrameGraph(self.surface_selector)
+        self.viewport_list[1].viewport.setNormalizedRect(QRectF(0.7, 0.7, 0.3, 0.3))
+        self.viewport_list[1].layer_filter.addLayer(Layer().get("ui"))
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_physics)

@@ -8,6 +8,7 @@ import pybullet
 
 from collision_group import CollisionGroup
 from global_config import grid_size, fps
+from viewport_manager import Layer
 
 
 class Target:
@@ -58,6 +59,7 @@ class Target:
         self.entity.addComponent(self.mesh)
         self.entity.addComponent(self.transform)
         self.entity.addComponent(self.material)
+        self.entity.addComponent(Layer().get("scene"))
 
     def update(self):
         pos, ori = pybullet.getBasePositionAndOrientation(self.body)
