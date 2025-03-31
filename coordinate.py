@@ -72,6 +72,7 @@ class Coordinate:
             self.x_cube_list[i]["entity"].addComponent(self.cube_mesh)
             self.x_cube_list[i]["entity"].addComponent(self.x_material)
             self.x_cube_list[i]["entity"].addComponent(self.x_cube_list[i]["transform"])
+            self.x_cube_list[i]["entity"].addComponent(Layer().get("scene"))
 
             self.y_cube_list.append({
                 "entity": Qt3DCore.QEntity(root_entity),
@@ -81,6 +82,7 @@ class Coordinate:
             self.y_cube_list[i]["entity"].addComponent(self.cube_mesh)
             self.y_cube_list[i]["entity"].addComponent(self.y_material)
             self.y_cube_list[i]["entity"].addComponent(self.y_cube_list[i]["transform"])
+            self.y_cube_list[i]["entity"].addComponent(Layer().get("scene"))
 
             self.z_cube_list.append({
                 "entity": Qt3DCore.QEntity(root_entity),
@@ -90,6 +92,7 @@ class Coordinate:
             self.z_cube_list[i]["entity"].addComponent(self.cube_mesh)
             self.z_cube_list[i]["entity"].addComponent(self.z_material)
             self.z_cube_list[i]["entity"].addComponent(self.z_cube_list[i]["transform"])
+            self.z_cube_list[i]["entity"].addComponent(Layer().get("scene"))
 
         self.offset = 0
 

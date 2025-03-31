@@ -181,10 +181,10 @@ class Window(Qt3DExtras.Qt3DWindow):
         self.viewport_list.append(Viewport(self.surface_selector))
         self.viewport_list[1].camera.lens().setPerspectiveProjection(45.0, 16.0 / 9.0, 0.1, 1000.0)
         self.viewport_list[1].camera.setPosition(QVector3D(grid_size * maze_size / 2, grid_size * maze_size * 2, grid_size * maze_size / 2))
-        self.viewport_list[1].camera.setViewCenter(QVector3D(grid_size * maze_size / 2 + 1, 0, grid_size * maze_size / 2))
+        self.viewport_list[1].camera.setViewCenter(QVector3D(grid_size * maze_size / 2, 0, grid_size * maze_size / 2 - 1))
         self.viewport_list[1].camera.setUpVector(QVector3D(0, 1, 0))
 
-        self.viewport_list[1].viewport.setNormalizedRect(QRectF(0.7, 0.7, 0.3, 0.3))
+        self.viewport_list[1].viewport.setNormalizedRect(QRectF(0.3, 0.3, 0.7, 0.7))
         self.viewport_list[1].layer_filter.addLayer(Layer().get("ui"))
 
         self.timer = QTimer()
@@ -242,6 +242,11 @@ class Window(Qt3DExtras.Qt3DWindow):
 
             self.camera().setViewCenter(camera_view_center_new)
             self.camera().setUpVector(QVector3D(0, 1, 0))
+
+            self.player.transform_map.setTranslation(camera_pos_new)
+            self.player.transform_map.setRotationY(
+                -90 + math.degrees(math.atan2(camera_view_vector.x(), camera_view_vector.z()))
+            )
 
             try:
                 camera_yaw = math.degrees(math.asin(camera_view_vector.x()))
@@ -315,12 +320,15 @@ class Window(Qt3DExtras.Qt3DWindow):
 
         self.player = Player()
 
-        player_pos, _ = pybullet.getBasePositionAndOrientation(self.player.body)
+        player_pos, player_ori = pybullet.getBasePositionAndOrientation(self.player.body)
 
         camera_2 = self.camera_list[2]
         camera_2.position = QVector3D(player_pos[0], player_pos[2], player_pos[1])
         camera_2.view_center = QVector3D(player_pos[0] + 1, player_pos[2], player_pos[1])
         camera_2.up_vector = QVector3D(0, 1, 0)
+
+        self.player.transform_map.setTranslation(QVector3D(player_pos[0], player_pos[2], player_pos[1]))
+        self.player.transform_map.setRotationZ(-90)
 
         from aim_line import AimLine
 

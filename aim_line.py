@@ -7,6 +7,7 @@ import pybullet
 
 from collision_group import CollisionGroup
 from global_config import grid_size, fps
+from viewport_manager import Layer
 
 
 class AimLine:
@@ -111,7 +112,7 @@ class DotMesh(Qt3DExtras.QSphereMesh):
         if not hasattr(self, "_initialized"):
             super().__init__()
             self._initialized = True
-            self._mesh.setRadius(grid_size * 0.02)
+            self.setRadius(grid_size * 0.02)
 
 
 class DotMaterial(Qt3DExtras.QPhongAlphaMaterial):
@@ -126,11 +127,11 @@ class DotMaterial(Qt3DExtras.QPhongAlphaMaterial):
         if not hasattr(self, "_initialized"):
             super().__init__()
             self._initialized = True
-            self._material.setAmbient(QColor(255, 255, 255))
-            self._material.setDiffuse(QColor(255, 255, 255))
-            self._material.setSpecular(QColor(0, 0, 0))
-            self._material.setShininess(0)
-            self._material.setAlpha(0.7)
+            self.setAmbient(QColor(255, 255, 255))
+            self.setDiffuse(QColor(255, 255, 255))
+            self.setSpecular(QColor(0, 0, 0))
+            self.setShininess(0)
+            self.setAlpha(0.7)
 
 
 class Dot:
@@ -144,13 +145,11 @@ class Dot:
 
     def __init__(self, root_entity, position):
 
-        # self.mest = DotMesh()
-        self.mesh = Qt3DExtras.QSphereMesh()
-        self.mesh.setRadius(grid_size * 0.02)
+        self.mesh = DotMesh()
 
         self.material = DotMaterial()
 
-        self.transform = Qt3DCore.QTransform(root_entity)
+        self.transform = Qt3DCore.QTransform()
         self.transform.setTranslation(position)
 
         self.entity = Qt3DCore.QEntity(root_entity)
@@ -159,3 +158,5 @@ class Dot:
         self.entity.addComponent(self.mesh)
         self.entity.addComponent(self.material)
         self.entity.addComponent(self.transform)
+
+        self.entity.addComponent(Layer().get("scene"))

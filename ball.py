@@ -25,10 +25,10 @@ class Ball:
     def __init__(self, root_entity, position, vector):
         self.root_entity = root_entity
 
-        self.mesh = Qt3DExtras.QSphereMesh(self.root_entity)
+        self.mesh = Qt3DExtras.QSphereMesh()
         self.mesh.setRadius(grid_size * 0.02)
 
-        self.material = Qt3DExtras.QPhongMaterial(self.root_entity)
+        self.material = Qt3DExtras.QPhongMaterial()
         self.material.setAmbient(QColor(255, 255, 255))
         self.material.setDiffuse(QColor(255, 255, 255))
         self.material.setSpecular(QColor(0, 0, 0))
