@@ -10,9 +10,17 @@ import pybullet
 import pybullet_data
 import sys
 
+from aim_line import AimLine
+from ball import BallList
 from collision_group import CollisionGroup
+from coordinate import Coordinate
 from global_config import grid_size, maze_size, fps, root_entity
+from ground import Ground
+from player import Player
+from target import Target
+from text import Text
 from viewport_manager import Layer, Viewport
+from wall import Wall
 
 
 class OrbitTransformController(QObject):
@@ -201,53 +209,38 @@ class Window(Qt3DExtras.Qt3DWindow):
         if self.coordinate is not None:
             self.coordinate.update()
 
-        player_pos, player_ori = pybullet.getBasePositionAndOrientation(self.player.body)
-        player_linear_vel, player_angular_vel = pybullet.getBaseVelocity(self.player.body)
-
-        camera_pos = self.controller.camera.position()
-        camera_view_center = self.controller.camera.viewCenter()
-
         if self.camera_index == 2:
-
-            player_move_vector = self.controller.cal_movement_vector()
-            if player_move_vector.length() > 0.01:
-                force = [
-                    player_move_vector.x() * self.player.mass,
-                    player_move_vector.z() * self.player.mass,
-                    player_move_vector.y() / 100 * self.player.mass,
-                ]
-                pybullet.applyExternalForce(self.player.body, -1, force, [0, 0, 0], pybullet.LINK_FRAME)
+            self.player.update(self.controller)
 
             player_pos, player_ori = pybullet.getBasePositionAndOrientation(self.player.body)
-
-            camera_pos_new = QVector3D(
-                player_pos[0],
-                player_pos[2],
-                player_pos[1],
+            self.controller.update_fp_camera(
+                QVector3D(
+                    player_pos[0],
+                    player_pos[2],
+                    player_pos[1],
+                ),
+                self.mapFromGlobal(QCursor.pos()),
             )
-            self.controller.camera.setPosition(camera_pos_new)
+            self.player.update_map(self.controller.latest_view_vector)
 
-            player_view_move_vector = self.controller.cal_view_vector(self.mapFromGlobal(QCursor.pos()))
+            camera_view_vector = self.controller.latest_view_vector
 
-            forward = (camera_view_center - camera_pos).normalized()
-            right = QVector3D.crossProduct(forward, QVector3D(0, 1, 0)).normalized()
-            up = QVector3D.crossProduct(right, forward).normalized()
+            if self.player.latest_pos_move_vector.length() + self.controller.latest_view_move_vector.length() > 0:
+                self.aim_line.cancel_sim()
+                if self.aim_line.showing:
+                    self.aim_line.set_hide()
+            else:
+                self.aim_line.enable_sim(
+                    QVector3D(player_pos[0], player_pos[2] - grid_size * 0.1, player_pos[1]) + camera_view_vector,
+                    camera_view_vector
+                )
+                if self.aim_line.showing:
+                    self.aim_line.set_show()
 
-            camera_view_vector = (
-                forward
-                + right * player_view_move_vector.x()
-                + up * player_view_move_vector.y()
-            ).normalized()
-            camera_view_center_new = camera_pos_new + camera_view_vector
+            self.center_cursor()
+            self.controller.last_cursor_pos = self.mapFromGlobal(QCursor.pos())
 
-            self.camera().setViewCenter(camera_view_center_new)
-            self.camera().setUpVector(QVector3D(0, 1, 0))
-
-            self.player.transform_map.setTranslation(camera_pos_new)
-            self.player.transform_map.setRotationY(
-                -90 + math.degrees(math.atan2(camera_view_vector.x(), camera_view_vector.z()))
-            )
-
+            # for pybullet debug camera
             try:
                 camera_yaw = math.degrees(math.asin(camera_view_vector.x()))
                 if camera_view_vector.z() < 0:
@@ -256,33 +249,15 @@ class Window(Qt3DExtras.Qt3DWindow):
                 print("camera_view_vector.x:", camera_view_vector.x())
                 camera_yaw = 0
 
-            if player_move_vector.length() + player_view_move_vector.length() > 0:
-                self.aim_line.cancel_sim()
-                if self.aim_line.showing:
-                    # self.aim_line.hide()
-                    self.aim_line.set_hide()
-            else:
-                self.aim_line.enable_sim(
-                    QVector3D(player_pos[0], player_pos[2] - grid_size * 0.1, player_pos[1]) + camera_view_vector,
-                    camera_view_vector
-                )
-                if self.aim_line.showing:
-                    # self.aim_line.show()
-                    self.aim_line.set_show()
+            pybullet.resetDebugVisualizerCamera(
+                cameraDistance=grid_size,  # 摄像机与玩家的距离
+                cameraYaw=camera_yaw,  # 水平旋转角
+                cameraPitch=-60,  # 俯仰角
+                cameraTargetPosition=player_pos,
+            )
 
-            self.center_cursor()
-            self.controller.last_cursor_pos = self.mapFromGlobal(QCursor.pos())
         else:
-            player_liner_vel_new = [0, 0, 0]
-            camera_yaw = 0
             self.controller.update_camera_position()
-
-        pybullet.resetDebugVisualizerCamera(
-            cameraDistance=grid_size,  # 摄像机与玩家的距离
-            cameraYaw=camera_yaw,  # 水平旋转角
-            cameraPitch=-60,  # 俯仰角
-            cameraTargetPosition=player_pos,
-        )
 
         self.frame_counter = (self.frame_counter + 1) % fps
 
@@ -308,16 +283,8 @@ class Window(Qt3DExtras.Qt3DWindow):
 
     def create_scene(self):
 
-        from coordinate import Coordinate
-
         self.coordinate = Coordinate(self.root_entity)
-
-        from ground import Ground
-
-        self.ground = Ground(self.root_entity)
-
-        from player import Player
-
+        self.ground = Ground()
         self.player = Player()
 
         player_pos, player_ori = pybullet.getBasePositionAndOrientation(self.player.body)
@@ -330,17 +297,11 @@ class Window(Qt3DExtras.Qt3DWindow):
         self.player.transform_map.setTranslation(QVector3D(player_pos[0], player_pos[2], player_pos[1]))
         self.player.transform_map.setRotationZ(-90)
 
-        from aim_line import AimLine
-
         self.aim_line = AimLine(self.root_entity)
 
         self.create_maze()
 
-        from ball import BallList
-
         self.ball_list = BallList(self.root_entity)
-
-        from target import Target
 
         self.target = Target(
             self.root_entity,
@@ -349,8 +310,6 @@ class Window(Qt3DExtras.Qt3DWindow):
         )
 
     def create_maze(self):
-        from wall import Wall
-        from text import Text
 
         from map_generator import Maze
 
@@ -371,7 +330,7 @@ class Window(Qt3DExtras.Qt3DWindow):
             if v1.x == 0:
                 create_wall(
                     0,
-                    grid_size * 0.5,
+                    grid_size * 0.55,
                     grid_size * 0.55 + v1.y * grid_size * 1.1,
                     True,
                 )
@@ -388,7 +347,7 @@ class Window(Qt3DExtras.Qt3DWindow):
             if v1.y == 0:
                 create_wall(
                     grid_size * 0.55 + v1.x * grid_size * 1.1,
-                    grid_size * 0.5,
+                    grid_size * 0.55,
                     0,
                 )
 
@@ -397,7 +356,7 @@ class Window(Qt3DExtras.Qt3DWindow):
                 if maze.e_prim_list[v1.get_id()][v2.get_id()] is None:
                     create_wall(
                         v2.x * grid_size * 1.1,
-                        grid_size / 2,
+                        grid_size * 0.55,
                         grid_size * 0.55 + v2.y * grid_size * 1.1,
                         True,
                     )
@@ -413,7 +372,7 @@ class Window(Qt3DExtras.Qt3DWindow):
             else:
                 create_wall(
                     (v1.x + 1) * grid_size * 1.1,
-                    grid_size / 2,
+                    grid_size * 0.55,
                     grid_size * 0.55 + v1.y * grid_size * 1.1,
                     True,
                 )
@@ -423,15 +382,20 @@ class Window(Qt3DExtras.Qt3DWindow):
                 if maze.e_prim_list[v1.get_id()][v2.get_id()] is None:
                     create_wall(
                         grid_size * 0.55 + v2.x * grid_size * 1.1,
-                        grid_size / 2,
+                        grid_size * 0.55,
                         v2.y * grid_size * 1.1,
                     )
             else:
                 create_wall(
                     grid_size * 0.55 + v1.x * grid_size * 1.1,
-                    grid_size / 2,
+                    grid_size * 0.55,
                     (v1.y + 1) * grid_size * 1.1,
                 )
+
+    def to_exit(self):
+        Ground.before_exit()
+        Wall.before_exit()
+        self.close()
 
     def keyPressEvent(self, event):
         # print(f"Key pressed: {event.modifiers()} {event.text()}")
@@ -464,7 +428,7 @@ class Window(Qt3DExtras.Qt3DWindow):
                 self.controller.movement_speed = grid_size / 20
                 self.unsetCursor()
             elif event.key() == Qt.Key.Key_Escape:
-                self.close()
+                self.to_exit()
             else:
                 print(f"Key pressed: {event.text()}")
                 event.ignore()

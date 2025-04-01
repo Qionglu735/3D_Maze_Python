@@ -55,7 +55,7 @@ class WallMaterial(Qt3DExtras.QTextureMaterial):
     def __new__(cls, root_entity, *args, **kwargs):
         if cls._material is None:
             # cls._material = super().__new__(cls)
-            cls._texture = Texture(root_entity)
+            cls._texture = Texture()
             cls._texture.generate_random_texture()
             cls._material = cls._texture.create_material()
         return cls._material
@@ -64,6 +64,12 @@ class WallMaterial(Qt3DExtras.QTextureMaterial):
         if not hasattr(self, "_initialized"):
             super().__init__()
             self._initialized = True
+
+    @classmethod
+    def before_exit(cls):
+        if cls._texture is not None:
+            del cls._texture
+            cls._texture = None
 
 
 class WallMaterialForMap(Qt3DExtras.QPhongMaterial):
@@ -155,3 +161,7 @@ class Wall:
         self.entity_map.addComponent(self.material_map)
 
         self.entity_map.addComponent(Layer().get("ui"))
+
+    @staticmethod
+    def before_exit():
+        WallMaterial.before_exit()

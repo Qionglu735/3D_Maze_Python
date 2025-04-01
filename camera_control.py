@@ -11,6 +11,9 @@ class CameraController:
 
     last_cursor_pos = None
 
+    latest_view_vector = None
+    latest_view_move_vector = None
+
     def __init__(self, camera):
         self.camera = camera
         self.keys_pressed = set()
@@ -33,7 +36,7 @@ class CameraController:
         self.keys_pressed.discard(event.key())
         return True
 
-    def cal_movement_vector(self):
+    def cal_pos_move_vector(self):
         forward = self.camera.viewVector().normalized()
         right = QVector3D.crossProduct(forward, QVector3D(0, 1, 0)).normalized()
         up = QVector3D.crossProduct(right, forward).normalized()
@@ -53,7 +56,7 @@ class CameraController:
         up *= 0
         return forward + right + up
 
-    def cal_view_vector(self, cursor_pos):
+    def cal_view_move_vector(self, cursor_pos):
         view_speed = 0.01
 
         return QVector2D(
@@ -105,3 +108,27 @@ class CameraController:
 
     def update_camera_rotation(self):
         pass
+
+    def update_fp_camera(self, player_pos, cursor_pos):
+        camera_pos = self.camera.position()
+        camera_view_center = self.camera.viewCenter()
+
+        self.latest_view_move_vector = self.cal_view_move_vector(cursor_pos)
+
+        forward = (camera_view_center - camera_pos).normalized()
+        right = QVector3D.crossProduct(forward, QVector3D(0, 1, 0)).normalized()
+        up = QVector3D.crossProduct(right, forward).normalized()
+
+        self.latest_view_vector = (
+            forward
+            + right * self.latest_view_move_vector.x()
+            + up * self.latest_view_move_vector.y()
+        ).normalized()
+        camera_view_center_new = player_pos + self.latest_view_vector
+
+        self.camera.setPosition(player_pos)
+        self.camera.setViewCenter(camera_view_center_new)
+        self.camera.setUpVector(QVector3D(0, 1, 0))
+
+    def get_view_vector(self):
+        return (self.camera.viewCenter() - self.camera.position()).normalized()
