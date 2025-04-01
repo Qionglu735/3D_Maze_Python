@@ -45,11 +45,11 @@ class Texture:
                 https://medium.com/@yvanscher/playing-with-perlin-noise-generating-realistic-archipelagos-b59f004d8401
                 """
                 color_value = [
+                    2 ** 3 - 1,
                     2 ** 4 - 1,
                     2 ** 5 - 1,
                     2 ** 6 - 1,
                     2 ** 7 - 1,
-                    2 ** 8 - 1,
                 ]
                 if value < -0.3:
                     if self.color == "red":

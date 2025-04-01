@@ -28,10 +28,10 @@ class Coordinate:
         self.y_material = Qt3DExtras.QPhongMaterial(root_entity)
         self.z_material = Qt3DExtras.QPhongMaterial(root_entity)
 
-        self.o_material.setAmbient(QColor(127, 127, 127))
-        self.x_material.setAmbient(QColor(255, 0, 0))
-        self.y_material.setAmbient(QColor(0, 255, 0))
-        self.z_material.setAmbient(QColor(0, 0, 255))
+        self.o_material.setAmbient(QColor(63, 63, 63))
+        self.x_material.setAmbient(QColor(127, 0, 0))
+        self.y_material.setAmbient(QColor(0, 127, 0))
+        self.z_material.setAmbient(QColor(0, 0, 127))
 
         self.x_transform = Qt3DCore.QTransform(translation=QVector3D(0, 0, 0))
         self.y_transform = Qt3DCore.QTransform(translation=QVector3D(0, 0, 0))
@@ -105,6 +105,6 @@ class Coordinate:
             self.y_cube_list[i]["transform"].setTranslation(QVector3D(0, pos, 0))
             self.z_cube_list[i]["transform"].setTranslation(QVector3D(0, 0, pos))
 
-        self.offset = (self.offset + 0.5) % self.distance
+        self.offset = (self.offset + 0.1) % self.distance
 
 
