@@ -78,7 +78,6 @@ class V:
         return self.x * self.maze_size + self.y
 
 
-
 class E:
     v1 = None
     v2 = None
@@ -252,3 +251,54 @@ class Maze:
                 if self.e_list[i][j].w < random_range * (edge_access_rate - 1):
                     self.e_prim_list[i][j] = self.e_list[i][j]
                     self.e_prim_list[j][i] = self.e_list[j][i]
+
+
+class DijkstraSolution:
+    maze = None
+    path = None
+    cost = 0
+
+    def __init__(self, maze):
+        self.maze = maze
+
+    def solve(self, from_id, to_id):
+        u_list = list()
+        v_list = [x for x in range(0, self.maze.size ** 2)]
+        d_dict = dict()
+        # max_distance = 0
+
+        u_list.append(from_id)
+        v_list.remove(from_id)
+        d_dict[from_id] = {
+            "id": from_id,
+            "path": [from_id],
+            "cost": 0
+        }
+
+        while to_id not in u_list:
+            temp_u_list = list()
+            for u_id in u_list:
+                for v_id in v_list:
+                    if self.maze.e_prim_list[u_id][v_id] is not None:
+                        temp_u_list.append({
+                            "id": v_id,
+                            "path": d_dict[u_id]["path"] + [v_id],
+                            "cost": d_dict[u_id]["cost"] + self.maze.e_prim_list[u_id][v_id].w,
+                        })
+            min_cost = -1
+            min_u_info = None
+            for u_info in temp_u_list:
+                if min_cost == -1 or u_info["cost"] < min_cost:
+                    min_cost = u_info["cost"]
+                    min_u_info = u_info
+            if min_u_info is not None:
+                u_list.append(min_u_info["id"])
+                v_list.remove(min_u_info["id"])
+                d_dict[min_u_info["id"]] = min_u_info
+                # max_distance = max(
+                #     max_distance, self.maze.v_list[min_u_info["id"]].x + self.maze.v_list[min_u_info["id"]].y
+                # )
+
+        self.path = [self.maze.v_list[x] for x in d_dict[to_id]["path"]]
+        self.cost = d_dict[to_id]["cost"]
+

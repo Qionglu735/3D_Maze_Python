@@ -80,6 +80,8 @@ class Window(Qt3DExtras.Qt3DWindow):
     ground = None
     player = None
     wall_list = list()
+    dj_solution = None
+    guide_line = None
     text_list = list()
     ball_list = None
     aim_line = None
@@ -90,6 +92,7 @@ class Window(Qt3DExtras.Qt3DWindow):
 
     frame_counter = 0
 
+    surface_selector = None
     viewport_list = list()
 
     def __init__(self):
@@ -152,6 +155,21 @@ class Window(Qt3DExtras.Qt3DWindow):
         self.root_entity = root_entity
         self.setRootEntity(self.root_entity)
 
+        self.surface_selector = Qt3DRender.QRenderSurfaceSelector()
+        self.renderSettings().setActiveFrameGraph(self.surface_selector)
+
+        self.viewport_list.append(Viewport(self.surface_selector, self.camera()))
+        self.viewport_list[0].layer_filter.addLayer(Layer().get("scene"))
+
+        self.viewport_list.append(Viewport(self.surface_selector))
+        self.viewport_list[1].camera.lens().setPerspectiveProjection(45.0, 16.0 / 9.0, 0.1, 1000.0)
+        self.viewport_list[1].camera.setPosition(QVector3D(grid_size * maze_size / 2, grid_size * maze_size * 2, grid_size * maze_size / 2))
+        self.viewport_list[1].camera.setViewCenter(QVector3D(grid_size * maze_size / 2, 0, grid_size * maze_size / 2 - 1))
+        self.viewport_list[1].camera.setUpVector(QVector3D(0, 1, 0))
+
+        self.viewport_list[1].viewport.setNormalizedRect(QRectF(0.3, 0.3, 0.7, 0.7))
+        self.viewport_list[1].layer_filter.addLayer(Layer().get("ui"))
+
         # For camera controls
         self.orbit_controller = Qt3DExtras.QOrbitCameraController(self.root_entity)
         self.orbit_controller.setLinearSpeed(180)
@@ -180,20 +198,8 @@ class Window(Qt3DExtras.Qt3DWindow):
 
         self.create_scene()
 
-        self.surface_selector = Qt3DRender.QRenderSurfaceSelector()
-        self.renderSettings().setActiveFrameGraph(self.surface_selector)
-
-        self.viewport_list.append(Viewport(self.surface_selector, self.camera()))
-        self.viewport_list[0].layer_filter.addLayer(Layer().get("scene"))
-
-        self.viewport_list.append(Viewport(self.surface_selector))
-        self.viewport_list[1].camera.lens().setPerspectiveProjection(45.0, 16.0 / 9.0, 0.1, 1000.0)
-        self.viewport_list[1].camera.setPosition(QVector3D(grid_size * maze_size / 2, grid_size * maze_size * 2, grid_size * maze_size / 2))
-        self.viewport_list[1].camera.setViewCenter(QVector3D(grid_size * maze_size / 2, 0, grid_size * maze_size / 2 - 1))
-        self.viewport_list[1].camera.setUpVector(QVector3D(0, 1, 0))
-
-        self.viewport_list[1].viewport.setNormalizedRect(QRectF(0.3, 0.3, 0.7, 0.7))
-        self.viewport_list[1].layer_filter.addLayer(Layer().get("ui"))
+        self.render_capture = None
+        self.render_capture_reply = None
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_physics)
@@ -305,18 +311,21 @@ class Window(Qt3DExtras.Qt3DWindow):
 
         self.target = Target(
             self.root_entity,
-            QVector3D(grid_size * 1.1 * (maze_size - 0.5), grid_size * 0.5, grid_size * 1.1 * (maze_size - 0.5)),
+            QVector3D(grid_size * (maze_size - 0.5), grid_size * 0.5, grid_size * (maze_size - 0.5)),
             QVector3D(0, 0, 90),
         )
 
     def create_maze(self):
 
-        from map_generator import Maze
+        from map_generator import Maze, DijkstraSolution
 
         maze = Maze(maze_size)
         maze.init_maze()
         maze.prim()
         maze.after_prim()
+
+        self.dj_solution = DijkstraSolution(maze)
+        self.dj_solution.solve(0, maze.size ** 2 - 1)
 
         def create_wall(x, y, z, rotate=False):
             if rotate:
@@ -330,8 +339,8 @@ class Window(Qt3DExtras.Qt3DWindow):
             if v1.x == 0:
                 create_wall(
                     0,
-                    grid_size * 0.55,
-                    grid_size * 0.55 + v1.y * grid_size * 1.1,
+                    grid_size * 0.5,
+                    grid_size * 0.5 + v1.y * grid_size,
                     True,
                 )
 
@@ -346,8 +355,8 @@ class Window(Qt3DExtras.Qt3DWindow):
 
             if v1.y == 0:
                 create_wall(
-                    grid_size * 0.55 + v1.x * grid_size * 1.1,
-                    grid_size * 0.55,
+                    grid_size * 0.5 + v1.x * grid_size,
+                    grid_size * 0.5,
                     0,
                 )
 
@@ -355,9 +364,9 @@ class Window(Qt3DExtras.Qt3DWindow):
                 v2 = maze.v_list[(v1.x + 1) * maze.size + v1.y]
                 if maze.e_prim_list[v1.get_id()][v2.get_id()] is None:
                     create_wall(
-                        v2.x * grid_size * 1.1,
-                        grid_size * 0.55,
-                        grid_size * 0.55 + v2.y * grid_size * 1.1,
+                        v2.x * grid_size,
+                        grid_size * 0.5,
+                        grid_size * 0.5 + v2.y * grid_size,
                         True,
                     )
 
@@ -371,9 +380,9 @@ class Window(Qt3DExtras.Qt3DWindow):
                 # self.text_list.append(text)
             else:
                 create_wall(
-                    (v1.x + 1) * grid_size * 1.1,
-                    grid_size * 0.55,
-                    grid_size * 0.55 + v1.y * grid_size * 1.1,
+                    (v1.x + 1) * grid_size,
+                    grid_size * 0.5,
+                    grid_size * 0.5 + v1.y * grid_size,
                     True,
                 )
 
@@ -381,16 +390,29 @@ class Window(Qt3DExtras.Qt3DWindow):
                 v2 = maze.v_list[v1.x * maze.size + (v1.y + 1)]
                 if maze.e_prim_list[v1.get_id()][v2.get_id()] is None:
                     create_wall(
-                        grid_size * 0.55 + v2.x * grid_size * 1.1,
-                        grid_size * 0.55,
-                        v2.y * grid_size * 1.1,
+                        grid_size * 0.5 + v2.x * grid_size,
+                        grid_size * 0.5,
+                        v2.y * grid_size,
                     )
             else:
                 create_wall(
-                    grid_size * 0.55 + v1.x * grid_size * 1.1,
-                    grid_size * 0.55,
-                    (v1.y + 1) * grid_size * 1.1,
+                    grid_size * 0.5 + v1.x * grid_size,
+                    grid_size * 0.5,
+                    (v1.y + 1) * grid_size,
                 )
+
+        self.wait_for_render(1)
+
+    def wait_for_render(self, stage):
+        self.render_capture_reply = self.viewport_list[0].render_capture.requestCapture(stage)
+        self.render_capture_reply.completed.connect(self.on_render_complete)
+        # print("wait_for_render:", stage)
+
+    def on_render_complete(self):
+        # print(self.render_capture_reply)
+
+        from guide_line import GuideLine
+        self.guide_line = GuideLine(self.dj_solution.path)
 
     def to_exit(self):
         Ground.before_exit()
@@ -429,6 +451,11 @@ class Window(Qt3DExtras.Qt3DWindow):
                 self.unsetCursor()
             elif event.key() == Qt.Key.Key_Escape:
                 self.to_exit()
+            elif event.key() == Qt.Key.Key_T:
+
+                from guide_line import GuideLine
+
+                self.guide_line = GuideLine(self.dj_solution.path)
             else:
                 print(f"Key pressed: {event.text()}")
                 event.ignore()

@@ -25,9 +25,11 @@ class WallMesh(Qt3DExtras.QCuboidMesh):
         if not hasattr(self, "_initialized"):
             super().__init__()
             self._initialized = True
-            self.setXExtent(grid_size * 1.1)
+
+            wall_thickness = grid_size * 0.1
+            self.setXExtent(grid_size + wall_thickness - 0.1)
             self.setYExtent(grid_size)
-            self.setZExtent(grid_size * 0.1)
+            self.setZExtent(wall_thickness)
 
 
 class WallMeshForMap(Qt3DExtras.QCuboidMesh):
