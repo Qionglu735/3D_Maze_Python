@@ -4,8 +4,8 @@ import random
 
 random_range = 100
 
-node_access_rate = 1  # close some node before prim. 0 for all, 1 for none
-edge_access_rate = 1  # open extra path after prim. 1 for none, 2 for all
+node_access_rate = 0.93  # close some node before prim. 0 for all, 1 for none
+edge_access_rate = 1.33  # open extra path after prim. 1 for none, 2 for all
 
 
 class Room:
@@ -97,6 +97,14 @@ class Maze:
     e_list = list()
     e_prim_list = list()
 
+    dijkstra_solution = None
+    dfs_solution = None
+    dfs_reverse_solution = None
+    dfs_shuffle_solution = None
+    bfs_solution = None
+    bfs_reverse_solution = None
+    bfs_shuffle_solution = None
+
     def __init__(self, size):
         self.size = size
 
@@ -112,37 +120,36 @@ class Maze:
                 self.e_list[i].append(None)
                 self.e_prim_list[i].append(None)
 
-        for i in range(size):
-            for j in range(size):
-                if self.v_list[i * size + j].w > random_range * node_access_rate:
-                    self.v_list[i * size + j].w = -1
-                    if j > 0:
-                        self.e_list[i * size + j][i * size + (j - 1)] = None
-                        self.e_list[i * size + (j - 1)][i * size + j] = None
-                    if i > 0:
-                        self.e_list[i * size + j][(i - 1) * size + j] = None
-                        self.e_list[(i - 1) * size + j][i * size + j] = None
-                    continue
-                    
-                if j < size - 1:
-                    self.e_list[i * size + j][i * size + (j + 1)] = E(
-                        self.v_list[i * size + j],
-                        self.v_list[i * size + (j + 1)],
-                    )
-                    self.e_list[i * size + (j + 1)][i * size + j] = E(
-                        self.v_list[i * size + (j + 1)],
-                        self.v_list[i * size + j],
-                    )
-                    
-                if i < size - 1:
-                    self.e_list[i * size + j][(i + 1) * size + j] = E(
-                        self.v_list[i * size + j],
-                        self.v_list[(i + 1) * size + j],
-                    )
-                    self.e_list[(i + 1) * size + j][i * size + j] = E(
-                        self.v_list[(i + 1) * size + j],
-                        self.v_list[i * size + j],
-                    )
+        for i, j in itertools.product(range(self.size), range(self.size)):
+            if self.v_list[i * size + j].w > random_range * node_access_rate:
+                self.v_list[i * size + j].w = -1
+                if j > 0:
+                    self.e_list[i * size + j][i * size + (j - 1)] = None
+                    self.e_list[i * size + (j - 1)][i * size + j] = None
+                if i > 0:
+                    self.e_list[i * size + j][(i - 1) * size + j] = None
+                    self.e_list[(i - 1) * size + j][i * size + j] = None
+                continue
+
+            if j < size - 1:
+                self.e_list[i * size + j][i * size + (j + 1)] = E(
+                    self.v_list[i * size + j],
+                    self.v_list[i * size + (j + 1)],
+                )
+                self.e_list[i * size + (j + 1)][i * size + j] = E(
+                    self.v_list[i * size + (j + 1)],
+                    self.v_list[i * size + j],
+                )
+
+            if i < size - 1:
+                self.e_list[i * size + j][(i + 1) * size + j] = E(
+                    self.v_list[i * size + j],
+                    self.v_list[(i + 1) * size + j],
+                )
+                self.e_list[(i + 1) * size + j][i * size + j] = E(
+                    self.v_list[(i + 1) * size + j],
+                    self.v_list[i * size + j],
+                )
 
         # remove room space before prim
         for i, j in itertools.product(range(self.size), range(self.size)):
@@ -246,11 +253,40 @@ class Maze:
                             self.e_prim_list[(_i + 1) * size + _j][_i * size + _j] = self.e_list[(_i + 1) * size + _j][_i * size + _j]
 
         # add extra edge
-        for i, j in itertools.product(range(self.size), range(self.size)):
+        for i, j in itertools.product(range(self.size ** 2), range(self.size ** 2)):
             if self.e_list[i][j] is not None and self.e_prim_list[i][j] is None:
                 if self.e_list[i][j].w < random_range * (edge_access_rate - 1):
                     self.e_prim_list[i][j] = self.e_list[i][j]
                     self.e_prim_list[j][i] = self.e_list[j][i]
+
+    def solve_maze(self):
+        self.dijkstra_solution = DijkstraSolution(self)
+        self.dijkstra_solution.solve(0, self.size ** 2 - 1)
+        print("dijkstra:", len(self.dijkstra_solution.path))
+
+        self.dfs_solution = DfsSolution(self)
+        self.dfs_solution.solve(0, self.size ** 2 - 1)
+        print("dfs:", len(self.dfs_solution.path))
+
+        self.dfs_reverse_solution = DfsSolution(self, reverse=True)
+        self.dfs_reverse_solution.solve(0, self.size ** 2 - 1)
+        print("dfs reverse:", len(self.dfs_reverse_solution.path))
+
+        self.dfs_shuffle_solution = DfsSolution(self, shuffle=True)
+        self.dfs_shuffle_solution.solve(0, self.size ** 2 - 1)
+        print("dfs shuffle:", len(self.dfs_shuffle_solution.path))
+
+        self.bfs_solution = BfsSolution(self)
+        self.bfs_solution.solve(0, self.size ** 2 - 1)
+        print("bfs:", len(self.bfs_solution.path))
+
+        self.bfs_reverse_solution = BfsSolution(self, reverse=True)
+        self.bfs_reverse_solution.solve(0, self.size ** 2 - 1)
+        print("bfs reverse:", len(self.bfs_reverse_solution.path))
+
+        self.bfs_shuffle_solution = BfsSolution(self, shuffle=True)
+        self.bfs_shuffle_solution.solve(0, self.size ** 2 - 1)
+        print("bfs shuffle:", len(self.bfs_shuffle_solution.path))
 
 
 class DijkstraSolution:
@@ -265,7 +301,6 @@ class DijkstraSolution:
         u_list = list()
         v_list = [x for x in range(0, self.maze.size ** 2)]
         d_dict = dict()
-        # max_distance = 0
 
         u_list.append(from_id)
         v_list.remove(from_id)
@@ -295,10 +330,139 @@ class DijkstraSolution:
                 u_list.append(min_u_info["id"])
                 v_list.remove(min_u_info["id"])
                 d_dict[min_u_info["id"]] = min_u_info
-                # max_distance = max(
-                #     max_distance, self.maze.v_list[min_u_info["id"]].x + self.maze.v_list[min_u_info["id"]].y
-                # )
 
         self.path = [self.maze.v_list[x] for x in d_dict[to_id]["path"]]
         self.cost = d_dict[to_id]["cost"]
 
+
+class DfsSolution:
+    maze = None
+    path = None
+    cost = 0
+
+    to_id = 0
+    reverse = False
+    shuffle = False
+
+    u_list = list()
+    v_list = list()
+    d_dict = dict()
+
+    def __init__(self, maze, reverse=False, shuffle=False):
+        self.maze = maze
+        self.reverse = reverse
+        self.shuffle = shuffle
+
+    def solve(self, from_id, to_id):
+        self.to_id = to_id
+
+        self.u_list = list()
+        self.v_list = [x for x in range(0, self.maze.size ** 2)]
+        self.d_dict = dict()
+
+        self.u_list.append(from_id)
+        self.v_list.remove(from_id)
+        self.d_dict[from_id] = {
+            "id": from_id,
+            "path": [from_id],
+            "cost": 0
+        }
+
+        self.dfs(from_id)
+
+        self.path = [self.maze.v_list[x] for x in self.d_dict[to_id]["path"]]
+        self.cost = self.d_dict[to_id]["cost"]
+
+    def dfs(self, u_id):
+        if u_id == self.to_id:
+            return True
+        u_list = list()
+        for v_id in self.v_list:
+            if self.maze.e_prim_list[u_id][v_id] is not None:
+                u_list.append(v_id)
+                self.d_dict[v_id] = {
+                    "id": v_id,
+                    "path": self.d_dict[u_id]["path"] + [v_id],
+                    "cost": self.d_dict[u_id]["cost"] + self.maze.e_prim_list[u_id][v_id].w,
+                }
+
+        if self.reverse:
+            u_list.reverse()
+        if self.shuffle:
+            random.shuffle(u_list)
+
+        for u_id in u_list:
+            self.u_list.append(u_id)
+            self.v_list.remove(u_id)
+
+            if self.dfs(u_id) is True:
+                return True
+            else:
+                self.u_list.remove(u_id)
+                self.v_list.append(u_id)
+        return False
+
+
+class BfsSolution:
+    maze = None
+    path = None
+    cost = 0
+
+    to_id = 0
+    reverse = False
+    shuffle = False
+
+    u_list = list()
+    v_list = list()
+    d_dict = dict()
+
+    def __init__(self, maze, reverse=False, shuffle=False):
+        self.maze = maze
+        self.reverse = reverse
+        self.shuffle = shuffle
+
+    def solve(self, from_id, to_id):
+        self.to_id = to_id
+
+        self.u_list = list()
+        self.v_list = [x for x in range(0, self.maze.size ** 2)]
+        self.d_dict = dict()
+
+        self.u_list.append(from_id)
+        self.v_list.remove(from_id)
+        self.d_dict[from_id] = {
+            "id": from_id,
+            "path": [from_id],
+            "cost": 0
+        }
+
+        self.bfs()
+
+        self.path = [self.maze.v_list[x] for x in self.d_dict[to_id]["path"]]
+        self.cost = self.d_dict[to_id]["cost"]
+
+    def bfs(self):
+        if self.reverse:
+            self.v_list.reverse()
+        if self.shuffle:
+            random.shuffle(self.v_list)
+
+        i = 0
+        while i < len(self.u_list):
+            u_id = self.u_list[i]
+            if u_id == self.to_id:
+                break
+            j = 0
+            while j < len(self.v_list):
+                v_id = self.v_list[j]
+                if self.maze.e_prim_list[u_id][v_id] is not None:
+                    self.d_dict[v_id] = {
+                        "id": v_id,
+                        "path": self.d_dict[u_id]["path"] + [v_id],
+                        "cost": self.d_dict[u_id]["cost"] + self.maze.e_prim_list[u_id][v_id].w,
+                    }
+                    self.u_list.append(v_id)
+                    self.v_list.remove(v_id)
+                else:
+                    j += 1
+            i += 1

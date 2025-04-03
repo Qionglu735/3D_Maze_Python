@@ -23,6 +23,11 @@ class Player:
 
     latest_pos_move_vector = None
 
+    latest_player_pos = None
+    latest_player_ori = None
+    latest_player_linear_vel = None
+    latest_player_angular_vel = None
+
     def __init__(self):
         self.mass = grid_size
         self.body = pybullet.createMultiBody(
@@ -78,14 +83,14 @@ class Player:
             ]
             pybullet.applyExternalForce(self.body, -1, force, [0, 0, 0], pybullet.LINK_FRAME)
 
-    def update_map(self, view_vector):
-        player_pos, player_ori = pybullet.getBasePositionAndOrientation(self.body)
-        player_linear_vel, player_angular_vel = pybullet.getBaseVelocity(self.body)
+        self.latest_player_pos, self.latest_player_ori = pybullet.getBasePositionAndOrientation(self.body)
+        self.latest_player_linear_vel, self.latest_player_angular_vel = pybullet.getBaseVelocity(self.body)
 
+    def update_map(self, view_vector):
         self.transform_map.setTranslation(QVector3D(
-            player_pos[0],
-            player_pos[2],
-            player_pos[1],
+            self.latest_player_pos[0],
+            self.latest_player_pos[2],
+            self.latest_player_pos[1],
         ))
         self.transform_map.setRotationY(
             -90 + math.degrees(math.atan2(view_vector.x(), view_vector.z()))

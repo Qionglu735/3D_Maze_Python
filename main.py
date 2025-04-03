@@ -79,9 +79,9 @@ class Window(Qt3DExtras.Qt3DWindow):
     coordinate = None
     ground = None
     player = None
+    maze = None
     wall_list = list()
-    dj_solution = None
-    guide_line = None
+    guide_line_list = list()
     text_list = list()
     ball_list = None
     aim_line = None
@@ -218,18 +218,15 @@ class Window(Qt3DExtras.Qt3DWindow):
         if self.camera_index == 2:
             self.player.update(self.controller)
 
-            player_pos, player_ori = pybullet.getBasePositionAndOrientation(self.player.body)
             self.controller.update_fp_camera(
                 QVector3D(
-                    player_pos[0],
-                    player_pos[2],
-                    player_pos[1],
+                    self.player.latest_player_pos[0],
+                    self.player.latest_player_pos[2],
+                    self.player.latest_player_pos[1],
                 ),
                 self.mapFromGlobal(QCursor.pos()),
             )
             self.player.update_map(self.controller.latest_view_vector)
-
-            camera_view_vector = self.controller.latest_view_vector
 
             if self.player.latest_pos_move_vector.length() + self.controller.latest_view_move_vector.length() > 0:
                 self.aim_line.cancel_sim()
@@ -237,8 +234,12 @@ class Window(Qt3DExtras.Qt3DWindow):
                     self.aim_line.set_hide()
             else:
                 self.aim_line.enable_sim(
-                    QVector3D(player_pos[0], player_pos[2] - grid_size * 0.1, player_pos[1]) + camera_view_vector,
-                    camera_view_vector
+                    QVector3D(
+                        self.player.latest_player_pos[0],
+                        self.player.latest_player_pos[2] - grid_size * 0.1,
+                        self.player.latest_player_pos[1],
+                    ) + self.controller.latest_view_vector,
+                    self.controller.latest_view_vector,
                 )
                 if self.aim_line.showing:
                     self.aim_line.set_show()
@@ -247,6 +248,7 @@ class Window(Qt3DExtras.Qt3DWindow):
             self.controller.last_cursor_pos = self.mapFromGlobal(QCursor.pos())
 
             # for pybullet debug camera
+            camera_view_vector = self.controller.latest_view_vector
             try:
                 camera_yaw = math.degrees(math.asin(camera_view_vector.x()))
                 if camera_view_vector.z() < 0:
@@ -259,7 +261,7 @@ class Window(Qt3DExtras.Qt3DWindow):
                 cameraDistance=grid_size,  # 摄像机与玩家的距离
                 cameraYaw=camera_yaw,  # 水平旋转角
                 cameraPitch=-60,  # 俯仰角
-                cameraTargetPosition=player_pos,
+                cameraTargetPosition=self.player.latest_player_pos,
             )
 
         else:
@@ -282,6 +284,9 @@ class Window(Qt3DExtras.Qt3DWindow):
                 body_b = contact[2]
                 print(body_a, body_b, contact[9])
                 collision_events.append((body_a, body_b, contact[9]))
+
+        for guide_line in self.guide_line_list:
+            guide_line.update()
 
     def center_cursor(self):
         center_pos = self.mapToGlobal(QPoint(self.width() // 2, self.height() // 2))
@@ -316,16 +321,13 @@ class Window(Qt3DExtras.Qt3DWindow):
         )
 
     def create_maze(self):
+        from map_generator import Maze
 
-        from map_generator import Maze, DijkstraSolution
-
-        maze = Maze(maze_size)
-        maze.init_maze()
-        maze.prim()
-        maze.after_prim()
-
-        self.dj_solution = DijkstraSolution(maze)
-        self.dj_solution.solve(0, maze.size ** 2 - 1)
+        self.maze = Maze(maze_size)
+        self.maze.init_maze()
+        self.maze.prim()
+        self.maze.after_prim()
+        self.maze.solve_maze()
 
         def create_wall(x, y, z, rotate=False):
             if rotate:
@@ -335,7 +337,7 @@ class Window(Qt3DExtras.Qt3DWindow):
 
             self.wall_list.append(_wall)
 
-        for v1 in maze.v_list:
+        for v1 in self.maze.v_list:
             if v1.x == 0:
                 create_wall(
                     0,
@@ -360,9 +362,9 @@ class Window(Qt3DExtras.Qt3DWindow):
                     0,
                 )
 
-            if v1.x + 1 < maze.size:
-                v2 = maze.v_list[(v1.x + 1) * maze.size + v1.y]
-                if maze.e_prim_list[v1.get_id()][v2.get_id()] is None:
+            if v1.x + 1 < self.maze.size:
+                v2 = self.maze.v_list[(v1.x + 1) * self.maze.size + v1.y]
+                if self.maze.e_prim_list[v1.get_id()][v2.get_id()] is None:
                     create_wall(
                         v2.x * grid_size,
                         grid_size * 0.5,
@@ -386,9 +388,9 @@ class Window(Qt3DExtras.Qt3DWindow):
                     True,
                 )
 
-            if v1.y + 1 < maze.size:
-                v2 = maze.v_list[v1.x * maze.size + (v1.y + 1)]
-                if maze.e_prim_list[v1.get_id()][v2.get_id()] is None:
+            if v1.y + 1 < self.maze.size:
+                v2 = self.maze.v_list[v1.x * self.maze.size + (v1.y + 1)]
+                if self.maze.e_prim_list[v1.get_id()][v2.get_id()] is None:
                     create_wall(
                         grid_size * 0.5 + v2.x * grid_size,
                         grid_size * 0.5,
@@ -412,7 +414,13 @@ class Window(Qt3DExtras.Qt3DWindow):
         # print(self.render_capture_reply)
 
         from guide_line import GuideLine
-        self.guide_line = GuideLine(self.dj_solution.path)
+        self.guide_line_list.append(GuideLine(self.maze.dijkstra_solution.path, 0))
+        self.guide_line_list.append(GuideLine(self.maze.dfs_solution.path, 0))
+        self.guide_line_list.append(GuideLine(self.maze.dfs_reverse_solution.path, 0))
+        self.guide_line_list.append(GuideLine(self.maze.dfs_shuffle_solution.path, 0))
+        self.guide_line_list.append(GuideLine(self.maze.bfs_solution.path, 0))
+        self.guide_line_list.append(GuideLine(self.maze.bfs_reverse_solution.path, 0))
+        self.guide_line_list.append(GuideLine(self.maze.bfs_shuffle_solution.path, 0))
 
     def to_exit(self):
         Ground.before_exit()
@@ -451,11 +459,6 @@ class Window(Qt3DExtras.Qt3DWindow):
                 self.unsetCursor()
             elif event.key() == Qt.Key.Key_Escape:
                 self.to_exit()
-            elif event.key() == Qt.Key.Key_T:
-
-                from guide_line import GuideLine
-
-                self.guide_line = GuideLine(self.dj_solution.path)
             else:
                 print(f"Key pressed: {event.text()}")
                 event.ignore()

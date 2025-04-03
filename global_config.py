@@ -6,7 +6,7 @@ import random
 
 random.seed(1001)
 
-grid_size = 10
+grid_size = 5
 maze_size = 5
 
 # fps = 1
