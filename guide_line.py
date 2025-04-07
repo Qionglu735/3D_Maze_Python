@@ -7,7 +7,7 @@ from PySide6.QtGui import QVector3D, QColor
 import math
 import random
 
-from global_config import grid_size, root_entity
+from global_config import grid_size, root_entity, fps
 from viewport_manager import Layer
 
 
@@ -53,7 +53,7 @@ class DashMesh(Qt3DExtras.QCuboidMesh):
 class CubeMesh(Qt3DExtras.QCuboidMesh):
     _mesh = None
 
-    size_ratio = 0.01
+    size_ratio = 0.015
 
     def __new__(cls, *args, **kwargs):
         if cls._mesh is None:
@@ -98,7 +98,7 @@ class Dash:
 
     cube_list = None
     cube_material = None
-    count = 16
+    count = 4
     distance = grid_size / count
     offset = 0
 
@@ -133,7 +133,7 @@ class Dash:
             pos = self.distance * (i - self.count / 2) + self.offset
             self.cube_list[i].transform.setTranslation(self.transform.translation() + self.direction * pos)
 
-        self.offset = (self.offset + 0.01) % self.distance
+        self.offset = (self.offset + self.distance / fps * 2) % self.distance
 
 
 class GuideLine:
@@ -143,7 +143,7 @@ class GuideLine:
         material = DashMaterial()
         cube_material = DashMaterial()
         cube_material.setAmbient(material.ambient())
-        cube_material.setAlpha(0.7)
+        cube_material.setAlpha(0.5)
 
         self.dash_list = list()
 

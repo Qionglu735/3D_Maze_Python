@@ -55,9 +55,9 @@ class AimLine:
                 position.y(),
             ], [0, 0, 0, 1])
             pybullet.resetBaseVelocity(self.sim_body, linearVelocity=[
-                vector.x() * 25,
-                vector.z() * 25,
-                vector.y() * 25,
+                vector.x(),
+                vector.z(),
+                vector.y(),
             ])
             self.run_sim = True
 

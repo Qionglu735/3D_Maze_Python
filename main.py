@@ -10,17 +10,10 @@ import pybullet
 import pybullet_data
 import sys
 
-from aim_line import AimLine
-from ball import BallList
 from collision_group import CollisionGroup
-from coordinate import Coordinate
 from global_config import grid_size, maze_size, fps, root_entity
-from ground import Ground
 from player import Player
-from target import Target
-from text import Text
 from viewport_manager import Layer, Viewport
-from wall import Wall
 
 
 class OrbitTransformController(QObject):
@@ -76,16 +69,9 @@ class Window(Qt3DExtras.Qt3DWindow):
     camera_index = 0
     camera_list = [None for _ in range(8)]
 
-    coordinate = None
-    ground = None
+    scene_a = None
+
     player = None
-    maze = None
-    wall_list = list()
-    guide_line_list = list()
-    text_list = list()
-    ball_list = None
-    aim_line = None
-    target = None
 
     yaw_angle = 0
     pitch_angle = 0
@@ -211,9 +197,7 @@ class Window(Qt3DExtras.Qt3DWindow):
         except pybullet.error:
             self.timer.stop()
             self.close()
-
-        if self.coordinate is not None:
-            self.coordinate.update()
+        self.scene_a.update()
 
         if self.camera_index == 2:
             self.player.update(self.controller)
@@ -229,20 +213,9 @@ class Window(Qt3DExtras.Qt3DWindow):
             self.player.update_map(self.controller.latest_view_vector)
 
             if self.player.latest_pos_move_vector.length() + self.controller.latest_view_move_vector.length() > 0:
-                self.aim_line.cancel_sim()
-                if self.aim_line.showing:
-                    self.aim_line.set_hide()
+                self.scene_a.cancel_aim_sim()
             else:
-                self.aim_line.enable_sim(
-                    QVector3D(
-                        self.player.latest_player_pos[0],
-                        self.player.latest_player_pos[2] - grid_size * 0.1,
-                        self.player.latest_player_pos[1],
-                    ) + self.controller.latest_view_vector,
-                    self.controller.latest_view_vector,
-                )
-                if self.aim_line.showing:
-                    self.aim_line.set_show()
+                self.scene_a.enable_aim_sim(self.player.latest_player_pos, self.controller.latest_view_vector)
 
             self.center_cursor()
             self.controller.last_cursor_pos = self.mapFromGlobal(QCursor.pos())
@@ -269,33 +242,16 @@ class Window(Qt3DExtras.Qt3DWindow):
 
         self.frame_counter = (self.frame_counter + 1) % fps
 
-        self.ball_list.update()
-
-        self.aim_line.update()
-
-        self.target.update()
-
-        contact_points = pybullet.getContactPoints()
-        collision_events = []
-        for contact in contact_points:
-            if contact[1] in self.ball_list.body_list and contact[2] == self.target.body \
-                    or contact[2] in self.ball_list.body_list and contact[1] == self.target.body:
-                body_a = contact[1]
-                body_b = contact[2]
-                print(body_a, body_b, contact[9])
-                collision_events.append((body_a, body_b, contact[9]))
-
-        for guide_line in self.guide_line_list:
-            guide_line.update()
-
     def center_cursor(self):
         center_pos = self.mapToGlobal(QPoint(self.width() // 2, self.height() // 2))
         QCursor.setPos(center_pos)
 
     def create_scene(self):
 
-        self.coordinate = Coordinate(self.root_entity)
-        self.ground = Ground()
+        from scene_a import SceneA
+
+        self.scene_a = SceneA(self.viewport_list[0])
+
         self.player = Player()
 
         player_pos, player_ori = pybullet.getBasePositionAndOrientation(self.player.body)
@@ -308,123 +264,8 @@ class Window(Qt3DExtras.Qt3DWindow):
         self.player.transform_map.setTranslation(QVector3D(player_pos[0], player_pos[2], player_pos[1]))
         self.player.transform_map.setRotationZ(-90)
 
-        self.aim_line = AimLine(self.root_entity)
-
-        self.create_maze()
-
-        self.ball_list = BallList(self.root_entity)
-
-        self.target = Target(
-            self.root_entity,
-            QVector3D(grid_size * (maze_size - 0.5), grid_size * 0.5, grid_size * (maze_size - 0.5)),
-            QVector3D(0, 0, 90),
-        )
-
-    def create_maze(self):
-        from map_generator import Maze
-
-        self.maze = Maze(maze_size)
-        self.maze.init_maze()
-        self.maze.prim()
-        self.maze.after_prim()
-        self.maze.solve_maze()
-
-        def create_wall(x, y, z, rotate=False):
-            if rotate:
-                _wall = Wall(self.root_entity, QVector3D(x, y, z), QQuaternion.fromEulerAngles(0, 90, 0))
-            else:
-                _wall = Wall(self.root_entity, QVector3D(x, y, z), QQuaternion.fromEulerAngles(0, 0, 0))
-
-            self.wall_list.append(_wall)
-
-        for v1 in self.maze.v_list:
-            if v1.x == 0:
-                create_wall(
-                    0,
-                    grid_size * 0.5,
-                    grid_size * 0.5 + v1.y * grid_size,
-                    True,
-                )
-
-                # text = Text(self.root_entity, f"{v1.x}, {v1.y}")
-                # text.transform.setTranslation(QVector3D(
-                #     0 + grid_size * 0.2,
-                #     grid_size,
-                #     grid_size * 0.5 + v1.y * grid_size,
-                # ))
-                # text.transform.setRotation(QQuaternion.fromEulerAngles(-90, 0, 0))
-                # self.text_list.append(text)
-
-            if v1.y == 0:
-                create_wall(
-                    grid_size * 0.5 + v1.x * grid_size,
-                    grid_size * 0.5,
-                    0,
-                )
-
-            if v1.x + 1 < self.maze.size:
-                v2 = self.maze.v_list[(v1.x + 1) * self.maze.size + v1.y]
-                if self.maze.e_prim_list[v1.get_id()][v2.get_id()] is None:
-                    create_wall(
-                        v2.x * grid_size,
-                        grid_size * 0.5,
-                        grid_size * 0.5 + v2.y * grid_size,
-                        True,
-                    )
-
-                # text = Text(self.root_entity, f"{v2.x}, {v2.y}")
-                # text.transform.setTranslation(QVector3D(
-                #     v2.x * grid_size + grid_size * 0.2,
-                #     grid_size,
-                #     grid_size * 0.5 + v2.y * grid_size,
-                # ))
-                # text.transform.setRotation(QQuaternion.fromEulerAngles(-90, 0, 0))
-                # self.text_list.append(text)
-            else:
-                create_wall(
-                    (v1.x + 1) * grid_size,
-                    grid_size * 0.5,
-                    grid_size * 0.5 + v1.y * grid_size,
-                    True,
-                )
-
-            if v1.y + 1 < self.maze.size:
-                v2 = self.maze.v_list[v1.x * self.maze.size + (v1.y + 1)]
-                if self.maze.e_prim_list[v1.get_id()][v2.get_id()] is None:
-                    create_wall(
-                        grid_size * 0.5 + v2.x * grid_size,
-                        grid_size * 0.5,
-                        v2.y * grid_size,
-                    )
-            else:
-                create_wall(
-                    grid_size * 0.5 + v1.x * grid_size,
-                    grid_size * 0.5,
-                    (v1.y + 1) * grid_size,
-                )
-
-        self.wait_for_render(1)
-
-    def wait_for_render(self, stage):
-        self.render_capture_reply = self.viewport_list[0].render_capture.requestCapture(stage)
-        self.render_capture_reply.completed.connect(self.on_render_complete)
-        # print("wait_for_render:", stage)
-
-    def on_render_complete(self):
-        # print(self.render_capture_reply)
-
-        from guide_line import GuideLine
-        self.guide_line_list.append(GuideLine(self.maze.dijkstra_solution.path, 0))
-        self.guide_line_list.append(GuideLine(self.maze.dfs_solution.path, 0))
-        self.guide_line_list.append(GuideLine(self.maze.dfs_reverse_solution.path, 0))
-        self.guide_line_list.append(GuideLine(self.maze.dfs_shuffle_solution.path, 0))
-        self.guide_line_list.append(GuideLine(self.maze.bfs_solution.path, 0))
-        self.guide_line_list.append(GuideLine(self.maze.bfs_reverse_solution.path, 0))
-        self.guide_line_list.append(GuideLine(self.maze.bfs_shuffle_solution.path, 0))
-
     def to_exit(self):
-        Ground.before_exit()
-        Wall.before_exit()
+        self.scene_a.before_exit()
         self.close()
 
     def keyPressEvent(self, event):
@@ -481,17 +322,14 @@ class Window(Qt3DExtras.Qt3DWindow):
             if event.button() == Qt.MouseButton.LeftButton:
                 player_pos, _ = pybullet.getBasePositionAndOrientation(self.player.body)
                 view_vector = (self.controller.camera.viewCenter() - self.controller.camera.position()).normalized()
-                self.ball_list.create_ball(
-                    QVector3D(player_pos[0], player_pos[2] - grid_size * 0.1, player_pos[1]) + view_vector,
-                    view_vector * grid_size ** 1.8,
-                )
+                self.scene_a.on_mouse_press(event, player_pos=player_pos, view_vector=view_vector)
             elif event.button() == Qt.MouseButton.RightButton:
-                self.aim_line.set_show()
+                self.scene_a.on_mouse_press(event)
 
     def mouseReleaseEvent(self, event):
         if self.camera_index == 2:
             if event.button() == Qt.MouseButton.RightButton:
-                self.aim_line.set_hide()
+                self.scene_a.on_mouse_release(event)
 
     def mouseMoveEvent(self, event):
         delta_x = event.position().x() - self.controller.last_cursor_pos.x()
