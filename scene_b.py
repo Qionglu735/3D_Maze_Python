@@ -3,20 +3,18 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QQuaternion, QVector3D
 
 import pybullet
+import itertools
 
 from aim_line import AimLine
 from ball import BallList
 from coordinate import Coordinate
 from global_config import grid_size, maze_size, wall_height, root_entity
 from ground import Ground
-from guide_line import GuideLine
-from map_generator import Maze
 from target import Target
-from text import Text
 from wall import Wall
 
 
-class SceneA:
+class SceneB:
     coordinate = None
     ground = None
     maze = None
@@ -25,17 +23,17 @@ class SceneA:
     aim_line = None
     guide_line_list = None
 
+    ingredient_list = None
+
     viewport = None
     render_capture_reply = None
-    render_stage = 1
+    render_stage = 0
 
     def __init__(self, viewport):
         self.viewport = viewport
 
         self.coordinate = Coordinate(root_entity)
         self.ground = Ground()
-
-        self.create_maze()
 
         self.aim_line = AimLine(root_entity)
         self.ball_list = BallList(root_entity)
@@ -46,12 +44,24 @@ class SceneA:
         )
         self.guide_line_list = list()
 
+        self.wait_for_render()
+
+    def wait_for_render(self):
+        self.render_stage += 1
+        self.render_capture_reply = self.viewport.render_capture.requestCapture(self.render_stage)
+        self.render_capture_reply.completed.connect(self.on_render_complete)
+        print("wait_for_render:", self.render_stage)
+
+    def on_render_complete(self):
+        print("on_render_complete:", self.render_stage)
+        if self.render_stage == 1:
+            self.create_maze()
+            self.wait_for_render()
+        elif self.render_stage == 2:
+            self.alchemy_desk()
+            self.wait_for_render()
+
     def create_maze(self):
-        self.maze = Maze(maze_size)
-        self.maze.init_maze()
-        self.maze.prim()
-        self.maze.after_prim()
-        self.maze.solve_maze()
 
         def create_wall(x, y, z, rotate=False):
             if rotate:
@@ -62,92 +72,45 @@ class SceneA:
             self.wall_list.append(_wall)
 
         self.wall_list = list()
-        self.text_list = list()
-        for v1 in self.maze.v_list:
-            if v1.x == 0:
+        for x, y in itertools.product(range(0,  maze_size), range(0, maze_size)):
+            if x == 0:
                 create_wall(
                     0,
-                    wall_height * 0.5,
-                    grid_size * 0.5 + v1.y * grid_size,
+                    wall_height * 0.2,
+                    grid_size * 0.5 + y * grid_size,
+                    True,
+                )
+            if y == 0:
+                create_wall(
+                    grid_size * 0.5 + x * grid_size,
+                    wall_height * 0.2,
+                    0,
+                )
+            if x + 1 == maze_size:
+                create_wall(
+                    (x + 1) * grid_size,
+                    wall_height * 0.2,
+                    grid_size * 0.5 + y * grid_size,
                     True,
                 )
 
-                # text = Text(self.root_entity, f"{v1.x}, {v1.y}")
-                # text.transform.setTranslation(QVector3D(
-                #     0 + grid_size * 0.2,
-                #     grid_size,
-                #     grid_size * 0.5 + v1.y * grid_size,
-                # ))
-                # text.transform.setRotation(QQuaternion.fromEulerAngles(-90, 0, 0))
-                # self.text_list.append(text)
-
-            if v1.y == 0:
+            if y + 1 == maze_size:
                 create_wall(
-                    grid_size * 0.5 + v1.x * grid_size,
-                    wall_height * 0.5,
-                    0,
+                    grid_size * 0.5 + x * grid_size,
+                    wall_height * 0.2,
+                    (y + 1) * grid_size,
                 )
 
-            if v1.x + 1 < self.maze.size:
-                v2 = self.maze.v_list[(v1.x + 1) * self.maze.size + v1.y]
-                if self.maze.e_prim_list[v1.get_id()][v2.get_id()] is None:
-                    create_wall(
-                        v2.x * grid_size,
-                        wall_height * 0.5,
-                        grid_size * 0.5 + v2.y * grid_size,
-                        True,
-                    )
+    def alchemy_desk(self):
+        from ingredient import IngredientList
+        self.ingredient_list = IngredientList()
 
-                # text = Text(self.root_entity, f"{v2.x}, {v2.y}")
-                # text.transform.setTranslation(QVector3D(
-                #     v2.x * grid_size + grid_size * 0.2,
-                #     grid_size,
-                #     grid_size * 0.5 + v2.y * grid_size,
-                # ))
-                # text.transform.setRotation(QQuaternion.fromEulerAngles(-90, 0, 0))
-                # self.text_list.append(text)
-            else:
-                create_wall(
-                    (v1.x + 1) * grid_size,
-                    wall_height * 0.5,
-                    grid_size * 0.5 + v1.y * grid_size,
-                    True,
-                )
-
-            if v1.y + 1 < self.maze.size:
-                v2 = self.maze.v_list[v1.x * self.maze.size + (v1.y + 1)]
-                if self.maze.e_prim_list[v1.get_id()][v2.get_id()] is None:
-                    create_wall(
-                        grid_size * 0.5 + v2.x * grid_size,
-                        wall_height * 0.5,
-                        v2.y * grid_size,
-                    )
-            else:
-                create_wall(
-                    grid_size * 0.5 + v1.x * grid_size,
-                    wall_height * 0.5,
-                    (v1.y + 1) * grid_size,
-                )
-
-        self.wait_for_render()
-
-    def wait_for_render(self):
-        self.render_capture_reply = self.viewport.render_capture.requestCapture(self.render_stage)
-        self.render_capture_reply.completed.connect(self.on_render_complete)
-        print("wait_for_render:", self.render_stage)
-
-    def on_render_complete(self):
-        print("on_render_complete:", self.render_stage)
-        if self.render_stage == 1:
-            self.guide_line_list.append(GuideLine(self.maze.dijkstra_solution.path, 0))
-            # self.guide_line_list.append(GuideLine(self.maze.dfs_solution.path, 1))
-            # self.guide_line_list.append(GuideLine(self.maze.dfs_reverse_solution.path, 2))
-            # self.guide_line_list.append(GuideLine(self.maze.dfs_shuffle_solution.path, 3))
-            # self.guide_line_list.append(GuideLine(self.maze.bfs_solution.path, 4))
-            # self.guide_line_list.append(GuideLine(self.maze.bfs_reverse_solution.path, 5))
-            # self.guide_line_list.append(GuideLine(self.maze.bfs_shuffle_solution.path, 6))
-
-            self.render_stage += 1
+        self.ingredient_list.create_ingredient(QVector3D(0, 0, -5), QVector3D(0, 0, 0))
+        self.ingredient_list.create_ingredient(QVector3D(5, 5, -5), QVector3D(0, 0, 0))
+        self.ingredient_list.create_ingredient(QVector3D(10, 10, -5), QVector3D(0, 0, 0))
+        self.ingredient_list.create_ingredient(QVector3D(15, 15, -5), QVector3D(0, 0, 0))
+        self.ingredient_list.create_ingredient(QVector3D(20, 20, -5), QVector3D(0, 0, 0))
+        self.ingredient_list.create_ingredient(QVector3D(25, 25, -5), QVector3D(0, 0, 0))
 
     def cancel_aim_sim(self):
         self.aim_line.cancel_sim()

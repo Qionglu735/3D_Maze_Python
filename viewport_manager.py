@@ -5,18 +5,14 @@ from global_config import root_entity
 
 
 class Layer:
-    _dict = {
-        "scene": Qt3DRender.QLayer(root_entity),
-        "ui": Qt3DRender.QLayer(root_entity),
-    }
+    _dict = dict()
     # camera_layer["scene"].setRecursive(True)
 
     @classmethod
     def get(cls, name):
-        if name in cls._dict:
-            return cls._dict[name]
-        else:
-            return None
+        if name not in cls._dict:
+            cls._dict[name] = Qt3DRender.QLayer(root_entity)
+        return cls._dict[name]
 
 
 class Viewport:

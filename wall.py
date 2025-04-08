@@ -7,7 +7,7 @@ import math
 import pybullet
 
 from collision_group import CollisionGroup
-from global_config import grid_size
+from global_config import grid_size, wall_height
 from texture import Texture
 from viewport_manager import Layer
 
@@ -28,7 +28,7 @@ class WallMesh(Qt3DExtras.QCuboidMesh):
 
             wall_thickness = grid_size * 0.1
             self.setXExtent(grid_size + wall_thickness - 0.1)
-            self.setYExtent(grid_size)
+            self.setYExtent(wall_height)
             self.setZExtent(wall_thickness)
 
 

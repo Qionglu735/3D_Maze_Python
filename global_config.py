@@ -9,6 +9,8 @@ random.seed(1001)
 grid_size = 5
 maze_size = 15
 
+wall_height = grid_size * 0.6
+
 # fps = 1
 # fps = 10
 # fps = 30

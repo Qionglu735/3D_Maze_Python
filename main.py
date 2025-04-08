@@ -69,7 +69,7 @@ class Window(Qt3DExtras.Qt3DWindow):
     camera_index = 0
     camera_list = [None for _ in range(8)]
 
-    scene_a = None
+    scene = None
 
     player = None
 
@@ -149,12 +149,34 @@ class Window(Qt3DExtras.Qt3DWindow):
 
         self.viewport_list.append(Viewport(self.surface_selector))
         self.viewport_list[1].camera.lens().setPerspectiveProjection(45.0, 16.0 / 9.0, 0.1, 1000.0)
-        self.viewport_list[1].camera.setPosition(QVector3D(grid_size * maze_size / 2, grid_size * maze_size * 2, grid_size * maze_size / 2))
-        self.viewport_list[1].camera.setViewCenter(QVector3D(grid_size * maze_size / 2, 0, grid_size * maze_size / 2 - 1))
+        self.viewport_list[1].camera.setPosition(QVector3D(
+            grid_size * maze_size / 2,
+            grid_size * maze_size * 2,
+            grid_size * maze_size / 2,
+        ))
+        self.viewport_list[1].camera.setViewCenter(QVector3D(
+            grid_size * maze_size / 2,
+            0,
+            grid_size * maze_size / 2 - 1,
+        ))
         self.viewport_list[1].camera.setUpVector(QVector3D(0, 1, 0))
-
         self.viewport_list[1].viewport.setNormalizedRect(QRectF(0.3, 0.3, 0.7, 0.7))
-        self.viewport_list[1].layer_filter.addLayer(Layer().get("ui"))
+        # self.viewport_list[1].layer_filter.addLayer(Layer().get("ui"))
+
+        self.viewport_list.append(Viewport(self.surface_selector))
+        self.viewport_list[2].camera.lens().setPerspectiveProjection(45.0, 16.0 / 9.0, 0.1, 1000.0)
+        self.viewport_list[2].camera.setPosition(QVector3D(
+            grid_size * maze_size / 2,
+            grid_size * maze_size / 2,
+            grid_size * maze_size * 1,
+        ))
+        self.viewport_list[2].camera.setViewCenter(QVector3D(
+            grid_size * maze_size / 2,
+            grid_size * maze_size / 2,
+            0,
+        ))
+        self.viewport_list[2].camera.setUpVector(QVector3D(0, 1, 0))
+        self.viewport_list[2].viewport.setNormalizedRect(QRectF(0, 0, 1, 1))
 
         # For camera controls
         self.orbit_controller = Qt3DExtras.QOrbitCameraController(self.root_entity)
@@ -197,7 +219,7 @@ class Window(Qt3DExtras.Qt3DWindow):
         except pybullet.error:
             self.timer.stop()
             self.close()
-        self.scene_a.update()
+        self.scene.update()
 
         if self.camera_index == 2:
             self.player.update(self.controller)
@@ -213,9 +235,9 @@ class Window(Qt3DExtras.Qt3DWindow):
             self.player.update_map(self.controller.latest_view_vector)
 
             if self.player.latest_pos_move_vector.length() + self.controller.latest_view_move_vector.length() > 0:
-                self.scene_a.cancel_aim_sim()
+                self.scene.cancel_aim_sim()
             else:
-                self.scene_a.enable_aim_sim(self.player.latest_player_pos, self.controller.latest_view_vector)
+                self.scene.enable_aim_sim(self.player.latest_player_pos, self.controller.latest_view_vector)
 
             self.center_cursor()
             self.controller.last_cursor_pos = self.mapFromGlobal(QCursor.pos())
@@ -249,8 +271,13 @@ class Window(Qt3DExtras.Qt3DWindow):
     def create_scene(self):
 
         from scene_a import SceneA
+        from scene_b import SceneB
 
-        self.scene_a = SceneA(self.viewport_list[0])
+        self.scene = SceneA(self.viewport_list[0])
+        self.viewport_list[1].layer_filter.addLayer(Layer().get("ui"))
+
+        # self.scene = SceneB(self.viewport_list[0])
+        # self.viewport_list[2].layer_filter.addLayer(Layer().get("alchemy"))
 
         self.player = Player()
 
@@ -265,7 +292,7 @@ class Window(Qt3DExtras.Qt3DWindow):
         self.player.transform_map.setRotationZ(-90)
 
     def to_exit(self):
-        self.scene_a.before_exit()
+        self.scene.before_exit()
         self.close()
 
     def keyPressEvent(self, event):
@@ -322,14 +349,14 @@ class Window(Qt3DExtras.Qt3DWindow):
             if event.button() == Qt.MouseButton.LeftButton:
                 player_pos, _ = pybullet.getBasePositionAndOrientation(self.player.body)
                 view_vector = (self.controller.camera.viewCenter() - self.controller.camera.position()).normalized()
-                self.scene_a.on_mouse_press(event, player_pos=player_pos, view_vector=view_vector)
+                self.scene.on_mouse_press(event, player_pos=player_pos, view_vector=view_vector)
             elif event.button() == Qt.MouseButton.RightButton:
-                self.scene_a.on_mouse_press(event)
+                self.scene.on_mouse_press(event)
 
     def mouseReleaseEvent(self, event):
         if self.camera_index == 2:
             if event.button() == Qt.MouseButton.RightButton:
-                self.scene_a.on_mouse_release(event)
+                self.scene.on_mouse_release(event)
 
     def mouseMoveEvent(self, event):
         delta_x = event.position().x() - self.controller.last_cursor_pos.x()
