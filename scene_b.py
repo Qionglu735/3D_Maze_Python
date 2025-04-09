@@ -11,7 +11,7 @@ from coordinate import Coordinate
 from global_config import grid_size, maze_size, wall_height, root_entity
 from ground import Ground
 from target import Target
-from wall import Wall
+from wall import WallList
 
 
 class SceneB:
@@ -65,13 +65,11 @@ class SceneB:
 
         def create_wall(x, y, z, rotate=False):
             if rotate:
-                _wall = Wall(root_entity, QVector3D(x, y, z), QQuaternion.fromEulerAngles(0, 90, 0))
+                self.wall_list.create_wall(QVector3D(x, y, z), QQuaternion.fromEulerAngles(0, 90, 0))
             else:
-                _wall = Wall(root_entity, QVector3D(x, y, z), QQuaternion.fromEulerAngles(0, 0, 0))
+                self.wall_list.create_wall(QVector3D(x, y, z), QQuaternion.fromEulerAngles(0, 0, 0))
 
-            self.wall_list.append(_wall)
-
-        self.wall_list = list()
+        self.wall_list = WallList(root_entity)
         for x, y in itertools.product(range(0,  maze_size), range(0, maze_size)):
             if x == 0:
                 create_wall(
@@ -164,7 +162,6 @@ class SceneB:
         if event.button() == Qt.MouseButton.RightButton:
             self.aim_line.set_hide()
 
-    @staticmethod
-    def before_exit():
+    def before_exit(self):
         Ground.before_exit()
-        Wall.before_exit()
+        self.wall_list.before_exit()

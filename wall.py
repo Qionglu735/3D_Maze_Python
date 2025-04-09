@@ -4,6 +4,7 @@ from PySide6.Qt3DExtras import Qt3DExtras
 from PySide6.QtGui import QColor
 
 import math
+import random
 import pybullet
 
 from collision_group import CollisionGroup
@@ -27,7 +28,7 @@ class WallMesh(Qt3DExtras.QCuboidMesh):
             self._initialized = True
 
             wall_thickness = grid_size * 0.1
-            self.setXExtent(grid_size + wall_thickness - 0.1)
+            self.setXExtent(grid_size + wall_thickness * 0.0)
             self.setYExtent(wall_height)
             self.setZExtent(wall_thickness)
 
@@ -50,28 +51,22 @@ class WallMeshForMap(Qt3DExtras.QCuboidMesh):
             self.setZExtent(grid_size * 0.3)
 
 
-class WallMaterial(Qt3DExtras.QTextureMaterial):
+class WallMaterial:
     _texture = None
     _material = None
 
-    def __new__(cls, root_entity, *args, **kwargs):
-        if cls._material is None:
-            # cls._material = super().__new__(cls)
-            cls._texture = Texture()
-            cls._texture.generate_random_texture()
-            cls._material = cls._texture.create_material()
-        return cls._material
+    def __init__(self):
+        self._texture = Texture(size=grid_size * 64)
+        self._texture.generate_random_texture()
+        self._material = self._texture.create_material()
 
-    def __init__(self, root_entity):
-        if not hasattr(self, "_initialized"):
-            super().__init__()
-            self._initialized = True
+    def material(self):
+        return self._material
 
-    @classmethod
-    def before_exit(cls):
-        if cls._texture is not None:
-            del cls._texture
-            cls._texture = None
+    def before_exit(self):
+        if self._texture is not None:
+            del self._texture
+            self._texture = None
 
 
 class WallMaterialForMap(Qt3DExtras.QPhongMaterial):
@@ -107,7 +102,7 @@ class Wall:
     transform_map = None
     material_map = None
 
-    def __init__(self, root_entity, position, rotation):
+    def __init__(self, root_entity, material, position, rotation):
 
         self.mesh = WallMesh()
 
@@ -115,7 +110,7 @@ class Wall:
         self.transform.setTranslation(position)
         self.transform.setRotation(rotation)
 
-        self.material = WallMaterial(root_entity)
+        self.material = material
 
         self.entity = Qt3DCore.QEntity(root_entity)
         self.entity.addComponent(self.mesh)
@@ -164,6 +159,27 @@ class Wall:
 
         self.entity_map.addComponent(Layer().get("ui"))
 
-    @staticmethod
-    def before_exit():
-        WallMaterial.before_exit()
+
+class WallList:
+    _list = None
+
+    root_entity = None
+    wall_material_list = None
+
+    def __init__(self, root_entity):
+        self._list = list()
+
+        self.root_entity = root_entity
+        self.wall_material_list = [WallMaterial() for _ in range(8)]
+
+    def create_wall(self, position, rotation):
+        self._list.append(Wall(
+            self.root_entity,
+            random.choice(self.wall_material_list).material(),
+            position,
+            rotation,
+        ))
+
+    def before_exit(self):
+        for wall_material in self.wall_material_list:
+            wall_material.before_exit()

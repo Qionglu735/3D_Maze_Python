@@ -15,28 +15,55 @@ from global_config import root_entity
 class Texture:
     color = ""
 
-    texture_file = "texture.png"
+    texture_file = ""
 
     texture_image = None
     texture = None
 
-    def __init__(self, color="red"):
+    color_value = [
+        # 2 ** 2.6 - 1,
+        2 ** 3 - 1,
+        2 ** 3.6 - 1,
+        2 ** 4 - 1,
+        2 ** 4.6 - 1,
+        2 ** 5 - 1,
+        2 ** 5.6 - 1,
+        2 ** 6 - 1,
+        2 ** 6.6 - 1,
+        2 ** 7 - 1,
+    ]
+    color_index = {
+        "test": [3, 2, 1],
+        "red": [4, 0, 0],
+        "yellow": [2, 2, 0],
+        "green": [0, 4, 0],
+        "cyan": [0, 2, 2],
+        "blue": [0, 0, 4],
+        "magenta": [2, 0, 2],
+    }
+
+    def __init__(self, color="red", size=512):
+        # self.color = random.choice([x for x in self.color_index.keys()])
+        # self.color = "magenta"
         self.color = color
+        self.size = size
 
         if not os.path.isdir("temp"):
             os.mkdir("temp")
 
         self.texture_file = f"temp/texture_{"".join([random.choice(string.ascii_lowercase) for _ in range(8)])}.png"
 
-    def generate_random_texture(self, size=1024):
-        scale = 512
-        image = QImage(size, size, QImage.Format.Format_RGB32)
-        for x in range(size):
-            for y in range(size):
+    def generate_random_texture(self):
+        seed_x = random.uniform(0, 1000)
+        seed_y = random.uniform(0, 1000)
+        scale = self.size / 4
+        image = QImage(self.size, self.size, QImage.Format.Format_RGB32)
+        for x in range(self.size):
+            for y in range(self.size):
                 value = noise.pnoise2(
-                    x / scale, y / scale,
-                    octaves=6, persistence=0.5, lacunarity=2,
-                    repeatx=size, repeaty=size)
+                    seed_x + x / scale, seed_y + y / scale,
+                    octaves=16, persistence=0.5, lacunarity=2,
+                    repeatx=self.size, repeaty=self.size)
                 """
                 scale: number that determines at what distance to view the noisemap.
                 octaves: the number of levels of detail you want you perlin noise to have.
@@ -44,41 +71,14 @@ class Texture:
                 persistence: number that determines how much each octave contributes to the overall shape (adjusts amplitude).
                 https://medium.com/@yvanscher/playing-with-perlin-noise-generating-realistic-archipelagos-b59f004d8401
                 """
-                color_value = [
-                    2 ** 3 - 1,
-                    2 ** 4 - 1,
-                    2 ** 5 - 1,
-                    2 ** 6 - 1,
-                    2 ** 7 - 1,
-                ]
-                if value < -0.3:
-                    if self.color == "red":
-                        image.setPixelColor(x, y, QColor(color_value[1], color_value[0], color_value[0]))
-                    elif self.color == "green":
-                        image.setPixelColor(x, y, QColor(color_value[0], color_value[1], color_value[0]))
-                    elif self.color == "blue":
-                        image.setPixelColor(x, y, QColor(color_value[0], color_value[0], color_value[1]))
-                elif value < 0:
-                    if self.color == "red":
-                        image.setPixelColor(x, y, QColor(color_value[2], color_value[1], color_value[1]))
-                    elif self.color == "green":
-                        image.setPixelColor(x, y, QColor(color_value[1], color_value[2], color_value[1]))
-                    elif self.color == "blue":
-                        image.setPixelColor(x, y, QColor(color_value[1], color_value[1], color_value[2]))
-                elif value < 0.3:
-                    if self.color == "red":
-                        image.setPixelColor(x, y, QColor(color_value[3], color_value[2], color_value[2]))
-                    elif self.color == "green":
-                        image.setPixelColor(x, y, QColor(color_value[2], color_value[3], color_value[2]))
-                    elif self.color == "blue":
-                        image.setPixelColor(x, y, QColor(color_value[2], color_value[2], color_value[3]))
-                else:
-                    if self.color == "red":
-                        image.setPixelColor(x, y, QColor(color_value[4], color_value[3], color_value[3]))
-                    elif self.color == "green":
-                        image.setPixelColor(x, y, QColor(color_value[3], color_value[4], color_value[3]))
-                    elif self.color == "blue":
-                        image.setPixelColor(x, y, QColor(color_value[3], color_value[3], color_value[4]))
+
+                value_normalized = max(-0.5, min(value, 0.5 - 1e-9)) + 0.5
+                color_index_indent = int(value_normalized * (len(self.color_value) - max(self.color_index[self.color])))
+                image.setPixelColor(x, y, QColor(
+                    self.color_value[self.color_index[self.color][0] + color_index_indent],
+                    self.color_value[self.color_index[self.color][1] + color_index_indent],
+                    self.color_value[self.color_index[self.color][2] + color_index_indent],
+                ))
 
         image.save(self.texture_file)
 

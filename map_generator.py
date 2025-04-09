@@ -259,34 +259,41 @@ class Maze:
                     self.e_prim_list[i][j] = self.e_list[i][j]
                     self.e_prim_list[j][i] = self.e_list[j][i]
 
-    def solve_maze(self):
-        self.dijkstra_solution = DijkstraSolution(self)
-        self.dijkstra_solution.solve(0, self.size ** 2 - 1)
-        print("dijkstra:", len(self.dijkstra_solution.path))
+    def solve_maze(self, method=""):
+        if method == "" or method == "dijkstra":
+            self.dijkstra_solution = DijkstraSolution(self)
+            self.dijkstra_solution.solve(0, self.size ** 2 - 1)
+            print("dijkstra:", len(self.dijkstra_solution.path))
 
-        self.dfs_solution = DfsSolution(self)
-        self.dfs_solution.solve(0, self.size ** 2 - 1)
-        print("dfs:", len(self.dfs_solution.path))
+        if method == "" or method == "dfs":
+            self.dfs_solution = DfsSolution(self)
+            self.dfs_solution.solve(0, self.size ** 2 - 1)
+            print("dfs:", len(self.dfs_solution.path))
 
-        self.dfs_reverse_solution = DfsSolution(self, reverse=True)
-        self.dfs_reverse_solution.solve(0, self.size ** 2 - 1)
-        print("dfs reverse:", len(self.dfs_reverse_solution.path))
+        if method == "" or method == "dfs_reverse":
+            self.dfs_reverse_solution = DfsSolution(self, reverse=True)
+            self.dfs_reverse_solution.solve(0, self.size ** 2 - 1)
+            print("dfs reverse:", len(self.dfs_reverse_solution.path))
 
-        self.dfs_shuffle_solution = DfsSolution(self, shuffle=True)
-        self.dfs_shuffle_solution.solve(0, self.size ** 2 - 1)
-        print("dfs shuffle:", len(self.dfs_shuffle_solution.path))
+        if method == "" or method == "dfs_shuffle":
+            self.dfs_shuffle_solution = DfsSolution(self, shuffle=True)
+            self.dfs_shuffle_solution.solve(0, self.size ** 2 - 1)
+            print("dfs shuffle:", len(self.dfs_shuffle_solution.path))
 
-        self.bfs_solution = BfsSolution(self)
-        self.bfs_solution.solve(0, self.size ** 2 - 1)
-        print("bfs:", len(self.bfs_solution.path))
+        if method == "" or method == "bfs":
+            self.bfs_solution = BfsSolution(self)
+            self.bfs_solution.solve(0, self.size ** 2 - 1)
+            print("bfs:", len(self.bfs_solution.path))
 
-        self.bfs_reverse_solution = BfsSolution(self, reverse=True)
-        self.bfs_reverse_solution.solve(0, self.size ** 2 - 1)
-        print("bfs reverse:", len(self.bfs_reverse_solution.path))
+        if method == "" or method == "bfs_reverse":
+            self.bfs_reverse_solution = BfsSolution(self, reverse=True)
+            self.bfs_reverse_solution.solve(0, self.size ** 2 - 1)
+            print("bfs reverse:", len(self.bfs_reverse_solution.path))
 
-        self.bfs_shuffle_solution = BfsSolution(self, shuffle=True)
-        self.bfs_shuffle_solution.solve(0, self.size ** 2 - 1)
-        print("bfs shuffle:", len(self.bfs_shuffle_solution.path))
+        if method == "" or method == "bfs_shuffle":
+            self.bfs_shuffle_solution = BfsSolution(self, shuffle=True)
+            self.bfs_shuffle_solution.solve(0, self.size ** 2 - 1)
+            print("bfs shuffle:", len(self.bfs_shuffle_solution.path))
 
 
 class DijkstraSolution:

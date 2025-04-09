@@ -19,7 +19,7 @@ class GroundMaterial(Qt3DExtras.QTextureMaterial):
     def __new__(cls, *args, **kwargs):
         if cls._material is None:
             # cls._material = super().__new__(cls)
-            cls._texture = Texture(color="green")
+            cls._texture = Texture(color="green", size=grid_size * maze_size * 16)
             cls._texture.generate_random_texture()
             cls._material = cls._texture.create_material()
         return cls._material

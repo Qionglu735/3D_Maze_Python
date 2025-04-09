@@ -3,13 +3,19 @@ from PySide6.Qt3DCore import Qt3DCore
 from PySide6.Qt3DRender import Qt3DRender
 
 import random
+import sys
 
-random.seed(1001)
+# seed = 1001
+# seed = 7097220057833736452
+seed = random.randint(0, sys.maxsize)
+
+print("SEED:", seed)
+random.seed(seed)
 
 grid_size = 5
 maze_size = 15
 
-wall_height = grid_size * 0.6
+wall_height = grid_size * 1.0
 
 # fps = 1
 # fps = 10

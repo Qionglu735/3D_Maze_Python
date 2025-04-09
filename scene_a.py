@@ -13,7 +13,7 @@ from guide_line import GuideLine
 from map_generator import Maze
 from target import Target
 from text import Text
-from wall import Wall
+from wall import WallList
 
 
 class SceneA:
@@ -51,17 +51,15 @@ class SceneA:
         self.maze.init_maze()
         self.maze.prim()
         self.maze.after_prim()
-        self.maze.solve_maze()
+        # self.maze.solve_maze()
 
         def create_wall(x, y, z, rotate=False):
             if rotate:
-                _wall = Wall(root_entity, QVector3D(x, y, z), QQuaternion.fromEulerAngles(0, 90, 0))
+                self.wall_list.create_wall(QVector3D(x, y, z), QQuaternion.fromEulerAngles(0, 90, 0))
             else:
-                _wall = Wall(root_entity, QVector3D(x, y, z), QQuaternion.fromEulerAngles(0, 0, 0))
+                self.wall_list.create_wall(QVector3D(x, y, z), QQuaternion.fromEulerAngles(0, 0, 0))
 
-            self.wall_list.append(_wall)
-
-        self.wall_list = list()
+        self.wall_list = WallList(root_entity)
         self.text_list = list()
         for v1 in self.maze.v_list:
             if v1.x == 0:
@@ -139,6 +137,7 @@ class SceneA:
     def on_render_complete(self):
         print("on_render_complete:", self.render_stage)
         if self.render_stage == 1:
+            self.maze.solve_maze("dijkstra")
             self.guide_line_list.append(GuideLine(self.maze.dijkstra_solution.path, 0))
             # self.guide_line_list.append(GuideLine(self.maze.dfs_solution.path, 1))
             # self.guide_line_list.append(GuideLine(self.maze.dfs_reverse_solution.path, 2))
@@ -201,7 +200,6 @@ class SceneA:
         if event.button() == Qt.MouseButton.RightButton:
             self.aim_line.set_hide()
 
-    @staticmethod
-    def before_exit():
+    def before_exit(self):
         Ground.before_exit()
-        Wall.before_exit()
+        self.wall_list.before_exit()
