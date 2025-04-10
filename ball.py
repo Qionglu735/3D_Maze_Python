@@ -21,6 +21,12 @@ class Ball:
     material = None
     transform = None
     body = None
+    # body_type = "rigid"
+    body_type = "sticky"
+    fix_position = False
+
+    last_pos = None
+    last_ori = None
 
     def __init__(self, root_entity, position, vector):
         self.root_entity = root_entity
@@ -68,8 +74,12 @@ class Ball:
         self.entity.addComponent(Layer().get("scene"))
 
     def update(self):
-        pos, _ = pybullet.getBasePositionAndOrientation(self.body)
-        self.transform.setTranslation(QVector3D(pos[0], pos[2], pos[1]))
+        if self.fix_position:
+            pybullet.resetBasePositionAndOrientation(self.body, self.last_pos, self.last_ori)
+            pybullet.resetBaseVelocity(self.body, linearVelocity=[0, 0, 0], angularVelocity=[0, 0, 0])
+
+        self.last_pos, self.last_ori = pybullet.getBasePositionAndOrientation(self.body)
+        self.transform.setTranslation(QVector3D(self.last_pos[0], self.last_pos[2], self.last_pos[1]))
 
 
 class BallList:
@@ -86,9 +96,17 @@ class BallList:
 
         if len(self._list) > 20:
             pybullet.removeBody(self._list[0].body)
+            self.body_list.remove(self._list[0].body)
             self._list[0].entity.setParent(None)
             self._list[0].entity.deleteLater()
             self._list.pop(0)
+
+    def find_by_body(self, body_id):
+        try:
+            index = self.body_list.index(body_id)
+            return self._list[index]
+        except ValueError:
+            return None
 
     def update(self):
         for i in self._list:

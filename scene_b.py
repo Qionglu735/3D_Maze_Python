@@ -121,7 +121,7 @@ class SceneB:
                 player_pos[0],
                 player_pos[2] - grid_size * 0.1,
                 player_pos[1],
-            ) + view_vector,
+            ),
             view_vector * grid_size ** 1.8,
         )
         if self.aim_line.showing:
@@ -152,7 +152,7 @@ class SceneB:
                     player_pos[0],
                     player_pos[2] - grid_size * 0.1,
                     player_pos[1],
-                ) + view_vector,
+                ),
                 view_vector * grid_size ** 1.8,
             )
         elif event.button() == Qt.MouseButton.RightButton:

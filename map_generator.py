@@ -337,6 +337,8 @@ class DijkstraSolution:
                 u_list.append(min_u_info["id"])
                 v_list.remove(min_u_info["id"])
                 d_dict[min_u_info["id"]] = min_u_info
+            else:
+                break
 
         self.path = [self.maze.v_list[x] for x in d_dict[to_id]["path"]]
         self.cost = d_dict[to_id]["cost"]

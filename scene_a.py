@@ -159,7 +159,7 @@ class SceneA:
                 player_pos[0],
                 player_pos[2] - grid_size * 0.1,
                 player_pos[1],
-            ) + view_vector,
+            ),
             view_vector * grid_size ** 1.8,
         )
         if self.aim_line.showing:
@@ -176,12 +176,21 @@ class SceneA:
         contact_points = pybullet.getContactPoints()
         collision_events = []
         for contact in contact_points:
-            if contact[1] in self.ball_list.body_list and contact[2] == self.target.body \
-                    or contact[2] in self.ball_list.body_list and contact[1] == self.target.body:
-                body_a = contact[1]
-                body_b = contact[2]
-                print(body_a, body_b, contact[9])
-                collision_events.append((body_a, body_b, contact[9]))
+            if contact[1] in self.ball_list.body_list:
+                ball = self.ball_list.find_by_body(contact[1])
+                if ball.body_type == "sticky":
+                    ball.fix_position = True
+            elif contact[2] in self.ball_list.body_list:
+                ball = self.ball_list.find_by_body(contact[2])
+                if ball.body_type == "sticky":
+                    ball.fix_position = True
+
+
+            if contact[1] in self.ball_list.body_list and contact[2] == self.target.body:
+                print(contact[1], contact[2], contact[9])
+
+            elif contact[2] in self.ball_list.body_list and contact[1] == self.target.body:
+                print(contact[1], contact[2], contact[9])
 
     def on_mouse_press(self, event, player_pos=None, view_vector=None):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -190,7 +199,7 @@ class SceneA:
                     player_pos[0],
                     player_pos[2] - grid_size * 0.1,
                     player_pos[1],
-                ) + view_vector,
+                ),
                 view_vector * grid_size ** 1.8,
             )
         elif event.button() == Qt.MouseButton.RightButton:

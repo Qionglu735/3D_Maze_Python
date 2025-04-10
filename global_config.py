@@ -7,6 +7,7 @@ import sys
 
 # seed = 1001
 # seed = 7097220057833736452
+# seed = 2588775276581901677  # maze_size = 5; ValueError: list.remove(x): x not in list
 seed = random.randint(0, sys.maxsize)
 
 print("SEED:", seed)
