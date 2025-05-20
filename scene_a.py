@@ -24,10 +24,11 @@ class SceneA:
     text_list = None
     aim_line = None
     guide_line_list = None
+    ingredient_list = None
 
     viewport = None
     render_capture_reply = None
-    render_stage = 1
+    render_stage = 0
 
     def __init__(self, viewport):
         self.viewport = viewport
@@ -35,10 +36,9 @@ class SceneA:
         self.coordinate = Coordinate(root_entity)
         self.ground = Ground()
 
-        self.create_maze()
-
         self.aim_line = AimLine(root_entity)
         self.ball_list = BallList(root_entity)
+        self.ball_body_type = "rigid"
         self.target = Target(
             root_entity,
             QVector3D(grid_size * (maze_size - 0.5), grid_size * 0.5, grid_size * (maze_size - 0.5)),
@@ -46,12 +46,38 @@ class SceneA:
         )
         self.guide_line_list = list()
 
+        self.wait_for_render()
+
+    def wait_for_render(self):
+        self.render_stage += 1
+        self.render_capture_reply = self.viewport.render_capture.requestCapture(self.render_stage)
+        self.render_capture_reply.completed.connect(self.on_render_complete)
+        print("wait_for_render:", self.render_stage)
+
+    def on_render_complete(self):
+        print("on_render_complete:", self.render_stage)
+        if self.render_stage == 1:
+            self.create_maze()
+            self.wait_for_render()
+        elif self.render_stage == 2:
+            self.maze.solve_maze("dijkstra")
+            self.guide_line_list.append(GuideLine(self.maze.dijkstra_solution.path, 0))
+            # self.guide_line_list.append(GuideLine(self.maze.dfs_solution.path, 1))
+            # self.guide_line_list.append(GuideLine(self.maze.dfs_reverse_solution.path, 2))
+            # self.guide_line_list.append(GuideLine(self.maze.dfs_shuffle_solution.path, 3))
+            # self.guide_line_list.append(GuideLine(self.maze.bfs_solution.path, 4))
+            # self.guide_line_list.append(GuideLine(self.maze.bfs_reverse_solution.path, 5))
+            # self.guide_line_list.append(GuideLine(self.maze.bfs_shuffle_solution.path, 6)
+            self.wait_for_render()
+        elif self.render_stage == 3:
+            self.alchemy_desk()
+            self.wait_for_render()
+
     def create_maze(self):
         self.maze = Maze(maze_size)
         self.maze.init_maze()
         self.maze.prim()
         self.maze.after_prim()
-        # self.maze.solve_maze()
 
         def create_wall(x, y, z, rotate=False):
             if rotate:
@@ -127,26 +153,26 @@ class SceneA:
                     (v1.y + 1) * grid_size,
                 )
 
-        self.wait_for_render()
+    def alchemy_desk(self):
+        from ingredient import IngredientList
+        self.ingredient_list = IngredientList()
 
-    def wait_for_render(self):
-        self.render_capture_reply = self.viewport.render_capture.requestCapture(self.render_stage)
-        self.render_capture_reply.completed.connect(self.on_render_complete)
-        print("wait_for_render:", self.render_stage)
+        self.ingredient_list.create_ingredient(QVector3D(0, 5 * maze_size / grid_size, -5), QVector3D(0, 0, 0))
+        self.ingredient_list._list[0].on_click_func = self.set_rigid
+        self.ingredient_list.create_ingredient(QVector3D(10 * maze_size / grid_size, 5 * maze_size / grid_size, -5), QVector3D(0, 0, 0))
+        self.ingredient_list._list[1].on_click_func = self.set_sticky
+        # self.ingredient_list.create_ingredient(QVector3D(10, 10, -5), QVector3D(0, 0, 0))
+        # self.ingredient_list.create_ingredient(QVector3D(15, 15, -5), QVector3D(0, 0, 0))
+        # self.ingredient_list.create_ingredient(QVector3D(20, 20, -5), QVector3D(0, 0, 0))
+        # self.ingredient_list.create_ingredient(QVector3D(25, 25, -5), QVector3D(0, 0, 0))
 
-    def on_render_complete(self):
-        print("on_render_complete:", self.render_stage)
-        if self.render_stage == 1:
-            self.maze.solve_maze("dijkstra")
-            self.guide_line_list.append(GuideLine(self.maze.dijkstra_solution.path, 0))
-            # self.guide_line_list.append(GuideLine(self.maze.dfs_solution.path, 1))
-            # self.guide_line_list.append(GuideLine(self.maze.dfs_reverse_solution.path, 2))
-            # self.guide_line_list.append(GuideLine(self.maze.dfs_shuffle_solution.path, 3))
-            # self.guide_line_list.append(GuideLine(self.maze.bfs_solution.path, 4))
-            # self.guide_line_list.append(GuideLine(self.maze.bfs_reverse_solution.path, 5))
-            # self.guide_line_list.append(GuideLine(self.maze.bfs_shuffle_solution.path, 6))
+    def set_rigid(self, event):
+        self.ball_body_type = "rigid"
+        print("set rigid")
 
-            self.render_stage += 1
+    def set_sticky(self, event):
+        self.ball_body_type = "sticky"
+        print("set sticky")
 
     def cancel_aim_sim(self):
         self.aim_line.cancel_sim()
@@ -185,7 +211,6 @@ class SceneA:
                 if ball.body_type == "sticky":
                     ball.fix_position = True
 
-
             if contact[1] in self.ball_list.body_list and contact[2] == self.target.body:
                 print(contact[1], contact[2], contact[9])
 
@@ -201,6 +226,7 @@ class SceneA:
                     player_pos[1],
                 ),
                 view_vector * grid_size ** 1.8,
+                body_type=self.ball_body_type,
             )
         elif event.button() == Qt.MouseButton.RightButton:
             self.aim_line.set_show()

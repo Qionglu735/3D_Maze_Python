@@ -72,6 +72,7 @@ class Window(Qt3DExtras.Qt3DWindow):
     scene = None
 
     player = None
+    fp_control_enabled = False
 
     yaw_angle = 0
     pitch_angle = 0
@@ -221,7 +222,7 @@ class Window(Qt3DExtras.Qt3DWindow):
             self.close()
         self.scene.update()
 
-        if self.camera_index == 2:
+        if self.camera_index == 2 and self.fp_control_enabled:
             self.player.update(self.controller)
 
             self.controller.update_fp_camera(
@@ -308,7 +309,7 @@ class Window(Qt3DExtras.Qt3DWindow):
                 self.camera_list[self.camera_index].load(self.camera())
 
                 self.controller.movement_speed = grid_size / 20
-                self.unsetCursor()
+                # self.unsetCursor()
             elif event.key() == Qt.Key.Key_F2:
                 self.camera_list[self.camera_index].save(self.camera())
                 # self.camera_list[self.camera_index].print_status(self.camera())
@@ -316,7 +317,7 @@ class Window(Qt3DExtras.Qt3DWindow):
                 self.camera_list[self.camera_index].load(self.camera())
 
                 self.controller.movement_speed = grid_size * 10
-                self.setCursor(Qt.CursorShape.BlankCursor)
+                # self.setCursor(Qt.CursorShape.BlankCursor)
             elif event.key() == Qt.Key.Key_F3:
                 self.camera_list[self.camera_index].save(self.camera())
                 # self.camera_list[self.camera_index].print_status(self.camera())
@@ -324,9 +325,19 @@ class Window(Qt3DExtras.Qt3DWindow):
                 self.camera_list[self.camera_index].load(self.camera())
 
                 self.controller.movement_speed = grid_size / 20
-                self.unsetCursor()
+                # self.unsetCursor()
             elif event.key() == Qt.Key.Key_Escape:
                 self.to_exit()
+            elif event.key() == Qt.Key.Key_Tab:
+                alchemy_layer = Layer().get("alchemy")
+                if alchemy_layer not in self.viewport_list[2].layer_filter.layers():
+                    self.viewport_list[2].layer_filter.addLayer(alchemy_layer)
+                    self.fp_control_enabled = False
+                    self.unsetCursor()
+                else:
+                    self.viewport_list[2].layer_filter.removeLayer(alchemy_layer)
+                    self.fp_control_enabled = True
+                    self.setCursor(Qt.CursorShape.BlankCursor)
             else:
                 print(f"Key pressed: {event.text()}")
                 event.ignore()

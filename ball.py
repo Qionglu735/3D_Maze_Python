@@ -4,6 +4,7 @@ from PySide6.Qt3DCore import Qt3DCore
 from PySide6.Qt3DExtras import Qt3DExtras
 
 import pybullet
+import random
 
 from collision_group import CollisionGroup
 from global_config import grid_size
@@ -35,8 +36,17 @@ class Ball:
         self.mesh.setRadius(grid_size * 0.02)
 
         self.material = Qt3DExtras.QPhongMaterial()
-        self.material.setAmbient(QColor(255, 255, 255))
-        self.material.setDiffuse(QColor(255, 255, 255))
+        color_value = [
+            2 ** 6 - 1,
+            2 ** 6.2 - 1,
+            2 ** 6.3 - 1,
+            2 ** 6.5 - 1,
+            2 ** 6.7 - 1,
+            2 ** 7 - 1,
+        ]
+        color = QColor(random.choice(color_value), random.choice(color_value), random.choice(color_value))
+        self.material.setAmbient(color)
+        self.material.setDiffuse(color)
         self.material.setSpecular(QColor(0, 0, 0))
         self.material.setShininess(0)
 
@@ -90,11 +100,12 @@ class BallList:
     def __init__(self, root_entity):
         self.root_entity = root_entity
 
-    def create_ball(self, position, vector):
+    def create_ball(self, position, vector, body_type="rigid"):
         self._list.append(Ball(self.root_entity, position, vector))
+        self._list[-1].body_type = body_type
         self.body_list.append(self._list[-1].body)
 
-        if len(self._list) > 20:
+        if len(self._list) > 50:
             pybullet.removeBody(self._list[0].body)
             self.body_list.remove(self._list[0].body)
             self._list[0].entity.setParent(None)

@@ -1,6 +1,7 @@
 
 from PySide6.Qt3DCore import Qt3DCore
 from PySide6.Qt3DExtras import Qt3DExtras
+from PySide6.Qt3DRender import Qt3DRender
 from PySide6.QtGui import QColor
 
 import math
@@ -157,7 +158,18 @@ class Wall:
         self.entity_map.addComponent(self.transform_map)
         self.entity_map.addComponent(self.material_map)
 
+        self.picker = Qt3DRender.QObjectPicker(root_entity)
+        self.picker.setHoverEnabled(True)
+        self.picker.clicked.connect(self.on_picker_clicked)
+        self.entity.addComponent(self.picker)
+
         self.entity_map.addComponent(Layer().get("ui"))
+
+    def on_picker_clicked(self, event):
+        pass
+        # print("wall", event)
+        # if event.button() == Qt3DRender.QPickEvent.Buttons.LeftButton:
+        #     print("Cube clicked at:", event.position())
 
 
 class WallList:
